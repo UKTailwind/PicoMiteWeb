@@ -15,5 +15,5 @@
 
 #define LWIP_DEBUG 1
 #define ALTCP_MBEDTLS_DEBUG  LWIP_DBG_ON
-
+#define MEMP_NUM_SYS_TIMEOUT   (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 1) // <-------- +1 for MQTT
 #endif

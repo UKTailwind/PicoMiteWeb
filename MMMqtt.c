@@ -37,10 +37,18 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #define LWIP_MQTT_EXAMPLE_IPADDR_INIT
 #endif
 #endif
+#undef LWIP_PLATFORM_DIAG
+#define LWIP_PLATFORM_DIAG
+enum {
+  TCP_DISCONNECTED,
+  TCP_CONNECTING,
+  MQTT_CONNECTING,
+  MQTT_CONNECTED
+};
 
 static ip_addr_t mqtt_ip LWIP_MQTT_EXAMPLE_IPADDR_INIT;
 
-static mqtt_client_t* mqtt_client;
+static mqtt_client_t* mqtt_client=NULL;
 
 
 typedef struct mqtt_dns_t_ {
@@ -52,7 +60,14 @@ mqtt_dns_t mqtt_dns = {
         NULL,
         0
 }; 
-
+typedef struct mqtt_subs_t_ {
+        char topic[STRINGSIZE];
+        int complete;
+} mqtt_subs_t;
+mqtt_subs_t mqtt_subs={
+  "",
+  0
+};
 static void mqtt_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg) {
     mqtt_dns_t *dns=(mqtt_dns_t *)arg;
     if (ipaddr) {
@@ -70,8 +85,8 @@ struct mqtt_connect_client_info_t mqtt_client_info =
   NULL, /* user */
   NULL, /* pass */
   100,  /* keep alive */
-  "A new topic", /* will_topic */
-  "Gone", /* will_msg */
+  NULL, /* will_topic */
+  NULL, /* will_msg */
   1,    /* will_qos */
   1    /* will_retain */
 
@@ -83,20 +98,41 @@ struct mqtt_connect_client_info_t mqtt_client_info =
 static void
 mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t flags)
 {
-  const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
-  LWIP_UNUSED_ARG(data);
-
-  LWIP_PLATFORM_DIAG(("MQTT client \"%s\" data cb: len %d, flags %d\n", client_info->client_id,
-          (int)len, (int)flags));
+    void *v;
+    int mylen=len;
+    if(mylen>255)mylen==255;
+    v = findvar("MM.MESSAGE$", T_STR | V_NOFIND_NULL);    // create the variable
+    if(v==NULL)findvar("MM.MESSAGE$", V_FIND | V_DIM_VAR | T_CONST);
+    u8_t *p=(u8_t *)v;
+    memcpy(&p[1],data,mylen);
+    p[0]=mylen;
+    MQTTComplete=1;
 }
 
 static void
 mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len)
 {
-  const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
+    void *v;
+    int mylen=strlen(topic);
+    if(mylen>255)mylen==255;
+    v = findvar("MM.TOPIC$", T_STR | V_NOFIND_NULL);    // create the variable
+    if(v==NULL)findvar("MM.TOPIC$", V_FIND | V_DIM_VAR | T_CONST);
+    u8_t *p=(u8_t *)v;
+    memcpy(&p[1],topic,mylen);
+    p[0]=mylen;
+}
 
-  LWIP_PLATFORM_DIAG(("MQTT client \"%s\" publish cb: topic %s, len %d\n", client_info->client_id,
-          topic, (int)tot_len));
+static void
+mqtt_submessage_cb(void *arg, err_t err)
+{
+  mqtt_subs_t *state=(mqtt_subs_t *)arg;
+  state->complete=1;
+}
+static void
+mqtt_unsubmessage_cb(void *arg, err_t err)
+{
+  mqtt_subs_t *state=(mqtt_subs_t *)arg;
+  state->complete=1;
 }
 
 static void
@@ -116,59 +152,118 @@ mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t st
   LWIP_PLATFORM_DIAG(("MQTT client \"%s\" mqtt connection cb: status %d\n", client_info->client_id, (int)status));
 }
 #endif /* LWIP_TCP */
-
 void
 mqtt_example_init(ip_addr_t *mqtt_ip, int port)
 {
 #if LWIP_TCP
+mqtt_connection_status_t status;
   mqtt_client = mqtt_client_new();
-
-  mqtt_set_inpub_callback(mqtt_client,
-          mqtt_incoming_publish_cb,
-          mqtt_incoming_data_cb,
-          LWIP_CONST_CAST(void*, &mqtt_client_info));
     printf("Connecting to %s port %u\r\n", ip4addr_ntoa(mqtt_ip), port);
 
   mqtt_client_connect(mqtt_client,
           mqtt_ip, port,
-          mqtt_connection_cb, LWIP_CONST_CAST(void*, &mqtt_client_info),
+          mqtt_connection_cb, &mqtt_client_info,
           &mqtt_client_info);
-          Timer4=5000;
-          while(Timer4){ProcessWeb();
-          }
-  mqtt_publish(mqtt_client, mqtt_client_info.will_topic, mqtt_client_info.will_msg, strlen(mqtt_client_info.will_msg), mqtt_client_info.will_qos, mqtt_client_info.will_retain,
-            mqtt_request_cb , (void *)&mqtt_client_info);
+  Timer4=5000;
+  while(Timer4 && mqtt_client->conn_state != MQTT_CONNECTED){ProcessWeb();
+  }
+  if(Timer4==0)error("Failed to connect");
+  mqtt_set_inpub_callback(mqtt_client,
+          mqtt_incoming_publish_cb,
+          mqtt_incoming_data_cb,
+          &mqtt_client_info);
 
 #endif /* LWIP_TCP */
 }
-void cmd_mqtt(unsigned char *tp){
-                char *IP=GetMemory(STRINGSIZE);
-                char *ID=GetMemory(STRINGSIZE);
-                int timeout=2000;
-                getargs(&tp,7,",");
-                if(argc!=7)error("Syntax");
-                IP=getCstring(argv[0]);
-                int port=getint(argv[2],1,65535);
+void closeMQTT(void){
+    if(mqtt_client){
+      mqtt_disconnect(mqtt_client);
+      mqtt_client_free(mqtt_client);
+      mqtt_client=NULL;
+    }
 
-                TCP_CLIENT_T *state = tcp_client_init();
-                TCP_CLIENT=state;
-                state->TCP_PORT=port;
-                mqtt_client_info.client_user=getCstring(argv[4]);
-                mqtt_client_info.client_pass=getCstring(argv[6]);
-                strcpy(ID,"PicoMiteWeb");
-                strcat(ID,id_out);
-                IntToStr(&ID[strlen(ID)],time_us_64(),16);
-                mqtt_client_info.client_id=ID;
-                 if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
-                        if(!ip4addr_aton(IP, &state->remote_addr))error("Invalid address format");
-                } else {
-                        int err = dns_gethostbyname(IP, &state->remote_addr, tcp_dns_found, state);
-                        Timer4=timeout;
-                        while(!state->complete && Timer4 && !(err==ERR_OK)){{if(startupcomplete)cyw43_arch_poll();}};
-                        if(!Timer4)error("Failed to convert web address");
-                        state->complete=0;
-                }
-                mqtt_example_init(&state->remote_addr,state->TCP_PORT);
-                return;
+}
+int cmd_mqtt(void){
+    unsigned char *tp=checkstring(cmdline,"MQTT CONNECT");
+    if(tp){
+        getargs(&tp,9,",");
+        char *IP=GetMemory(STRINGSIZE);
+        char *ID=GetMemory(STRINGSIZE);
+        if(mqtt_client)error("Already connected");
+        int timeout=2000;
+        if(!(argc==7 || argc==9))error("Syntax");
+        IP=getCstring(argv[0]);
+        int port=getint(argv[2],1,65535);
 
+        TCP_CLIENT_T *state = tcp_client_init();
+        TCP_CLIENT=state;
+        state->TCP_PORT=port;
+        mqtt_client_info.client_user=getCstring(argv[4]);
+        mqtt_client_info.client_pass=getCstring(argv[6]);
+        if(argc==9){
+          MQTTInterrupt=GetIntAddress(argv[8]);
+          InterruptUsed=true;
+        }
+        else MQTTInterrupt=NULL;
+        MQTTComplete=0;
+        strcpy(ID,"PicoMiteWeb");
+        strcat(ID,id_out);
+        IntToStr(&ID[strlen(ID)],time_us_64(),16);
+        mqtt_client_info.client_id=ID;
+
+        if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
+                if(!ip4addr_aton(IP, &state->remote_addr))error("Invalid address format");
+        } else {
+                int err = dns_gethostbyname(IP, &state->remote_addr, tcp_dns_found, state);
+                Timer4=timeout;
+                while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                if(!Timer4)error("Failed to convert web address");
+                state->complete=0;
+        }
+        mqtt_example_init(&state->remote_addr,state->TCP_PORT);
+        return 1;
+    }
+    tp=checkstring(cmdline,"MQTT PUBLISH");
+    if(tp){
+        getargs(&tp,7,",");
+        int qos=1;
+        int retain=1;
+        if(argc<3)error("Syntax");
+        char *topic=getCstring(argv[0]);
+        char *msg=getCstring(argv[2]);
+        if(argc>=5 && *argv[4])qos=getint(argv[4],0,2);
+        if(argc==7)retain=getint(argv[6],0,1);
+        mqtt_publish(mqtt_client, topic, msg, strlen(msg), qos, retain, mqtt_request_cb , (void *)&mqtt_client_info);
+      return 1;
+    }
+    tp=checkstring(cmdline,"MQTT SUBSCRIBE");
+    if(tp){
+      getargs(&tp,3,",");
+      if(!(argc>=1))error("Syntax");
+      strcpy(mqtt_subs.topic,getCstring(argv[0]));
+      int qos=0;
+      if(argc==3)qos=getint(argv[2],0,2);
+      mqtt_subs.complete=0;
+      Timer4=4000;
+      mqtt_sub_unsub(mqtt_client, mqtt_subs.topic, qos, mqtt_submessage_cb, &mqtt_subs, 1);
+      while(Timer4 && !mqtt_subs.complete)ProcessWeb();
+      if(Timer4==0)error("Failed to subscribe to $",mqtt_subs.topic);
+      return 1;
+    }
+    tp=checkstring(cmdline,"MQTT UNSUBSCRIBE");
+    if(tp){
+      strcpy(mqtt_subs.topic,getCstring(tp));
+      mqtt_subs.complete=0;
+      Timer4=4000;
+      mqtt_sub_unsub(mqtt_client, mqtt_subs.topic, 0, mqtt_unsubmessage_cb, &mqtt_subs, 0);
+      while(Timer4 && !mqtt_subs.complete)ProcessWeb();
+      if(Timer4==0)error("Failed to unsubscribe to $",mqtt_subs.topic);
+      return 1;
+    }
+    tp=checkstring(cmdline,"MQTT CLOSE");
+    if(tp){
+      if(!mqtt_client)return 1;
+      return 1;
+    }
+    return 0;
 }

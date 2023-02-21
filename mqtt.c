@@ -58,7 +58,7 @@
 #include "lwip/altcp_tcp.h"
 #include "lwip/altcp_tls.h"
 #include <string.h>
-
+extern void uSec(int);
 #if LWIP_TCP && LWIP_CALLBACK_API
 
 /**
@@ -74,8 +74,8 @@
 #define MQTT_DEBUG_WARN_STATE   (MQTT_DEBUG | LWIP_DBG_LEVEL_WARNING | LWIP_DBG_STATE)
 #define MQTT_DEBUG_SERIOUS      (MQTT_DEBUG | LWIP_DBG_LEVEL_SERIOUS)
 
-
-
+#undef LWIP_DEBUGF
+#define LWIP_DEBUGF
 /**
  * MQTT client connection states
  */
@@ -618,7 +618,7 @@ mqtt_cyclic_timer(void *arg)
     restart_timer = 0;
   }
   if (restart_timer) {
-   // sys_timeout(MQTT_CYCLIC_TIMER_INTERVAL * 1000, mqtt_cyclic_timer, arg);
+    sys_timeout(MQTT_CYCLIC_TIMER_INTERVAL * 1000, mqtt_cyclic_timer, arg);
   }
 }
 
@@ -672,6 +672,7 @@ static mqtt_connection_status_t
 mqtt_message_received(mqtt_client_t *client, u8_t fixed_hdr_len, u16_t length, u32_t remaining_length,
                       u8_t *var_hdr_payload)
 {
+u16_t payload_length;
   mqtt_connection_status_t res = MQTT_CONNECT_ACCEPTED;
 
   /* Control packet type */
@@ -681,7 +682,6 @@ mqtt_message_received(mqtt_client_t *client, u8_t fixed_hdr_len, u16_t length, u
   LWIP_ASSERT("fixed_hdr_len <= client->msg_idx", fixed_hdr_len <= client->msg_idx);
   LWIP_ERROR("buffer length mismatch", fixed_hdr_len + length <= MQTT_VAR_HEADER_BUFFER_LEN,
              return MQTT_CONNECT_DISCONNECTED);
-
   if (pkt_type == MQTT_MSG_TYPE_CONNACK) {
     if (client->conn_state == MQTT_CONNECTING) {
       if (length < 2) {
@@ -708,9 +708,8 @@ mqtt_message_received(mqtt_client_t *client, u8_t fixed_hdr_len, u16_t length, u
 
   } else if (pkt_type == MQTT_MSG_TYPE_PUBLISH) {
     u16_t payload_offset = 0;
-    u16_t payload_length = length;
+    payload_length = length;
     u8_t qos = MQTT_CTL_PACKET_QOS(client->rx_buffer[0]);
-
     if (client->msg_idx == (u32_t)(fixed_hdr_len + length)) {
       /* First publish message frame. Should have topic and pkt id*/
       size_t var_hdr_payload_bufsize = sizeof(client->rx_buffer) - fixed_hdr_len;
@@ -766,12 +765,16 @@ mqtt_message_received(mqtt_client_t *client, u8_t fixed_hdr_len, u16_t length, u
       /* Restore byte after topic */
       topic[topic_len] = bkp;
     }
+    
     if (payload_length > 0 || remaining_length == 0) {
       if (length < (size_t)(payload_offset + payload_length)) {
         LWIP_DEBUGF(MQTT_DEBUG_WARN,( "mqtt_message_received: Received short packet (payload)\n"));
+      uSec(1000000);
         goto out_disconnect;
       }
+      if (client->data_cb != NULL) {
       client->data_cb(client->inpub_arg, var_hdr_payload + payload_offset, payload_length, remaining_length == 0 ? MQTT_DATA_FLAG_LAST : 0);
+      }
       /* Reply if QoS > 0 */
       if (remaining_length == 0 && qos > 0) {
         /* Send PUBACK for QoS 1 or PUBREC for QoS 2 */
@@ -782,7 +785,7 @@ mqtt_message_received(mqtt_client_t *client, u8_t fixed_hdr_len, u16_t length, u
       }
     }
   } else {
-    if (length < 2) {
+   if (length < 2) {
       LWIP_DEBUGF(MQTT_DEBUG_WARN,( "mqtt_message_received: Received short message\n"));
       goto out_disconnect;
     }
@@ -871,8 +874,9 @@ mqtt_parse_incoming(mqtt_client_t *client, struct pbuf *p)
           /* fixed header is done */
           LWIP_DEBUGF(MQTT_DEBUG_TRACE, ("mqtt_parse_incoming: Remaining length after fixed header: %"U32_F"\n", msg_rem_len));
           if (msg_rem_len == 0) {
+            u8_t var_header_payload[256];
             /* Complete message with no extra headers of payload received */
-            mqtt_message_received(client, fixed_hdr_len, 0, 0, NULL);
+            mqtt_message_received(client, fixed_hdr_len, 0, 0, var_header_payload);
             client->msg_idx = 0;
             fixed_hdr_len = 0;
           } else {
@@ -880,6 +884,7 @@ mqtt_parse_incoming(mqtt_client_t *client, struct pbuf *p)
                not the first segment of this message) */
             msg_rem_len = (msg_rem_len + fixed_hdr_len) - client->msg_idx;
           }
+
         }
       }
     } else {
