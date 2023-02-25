@@ -52,12 +52,12 @@ static mqtt_client_t* mqtt_client=NULL;
 
 
 typedef struct mqtt_dns_t_ {
-        ip_addr_t *remote;
+        ip_addr_t remote;
         int complete;
 } mqtt_dns_t;
 
 mqtt_dns_t mqtt_dns = {
-        NULL,
+        0,
         0
 }; 
 typedef struct mqtt_subs_t_ {
@@ -71,7 +71,7 @@ mqtt_subs_t mqtt_subs={
 static void mqtt_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg) {
     mqtt_dns_t *dns=(mqtt_dns_t *)arg;
     if (ipaddr) {
-        dns->remote = (ip_addr_t *)ipaddr;
+        dns->remote = *ipaddr;
         dns->complete=1;
         char buff[STRINGSIZE]={0};
         sprintf(buff,"tcp address %s\r\n", ip4addr_ntoa(ipaddr));
@@ -183,6 +183,8 @@ void closeMQTT(void){
     }
 
 }
+static struct altcp_tls_config *tls_config = NULL;
+
 int cmd_mqtt(void){
     unsigned char *tp=checkstring(cmdline,"MQTT CONNECT");
     if(tp){
@@ -190,14 +192,15 @@ int cmd_mqtt(void){
         char *IP=GetMemory(STRINGSIZE);
         char *ID=GetMemory(STRINGSIZE);
         if(mqtt_client)error("Already connected");
-        int timeout=2000;
+        int timeout=5000;
         if(!(argc==7 || argc==9))error("Syntax");
         IP=getCstring(argv[0]);
         int port=getint(argv[2],1,65535);
-
-        TCP_CLIENT_T *state = tcp_client_init();
-        TCP_CLIENT=state;
-        state->TCP_PORT=port;
+        ip4_addr_t remote_addr;
+        if(port==8883){
+          tls_config = altcp_tls_create_config_client(NULL, 0);
+          mqtt_client_info.tls_config=tls_config;
+        }
         mqtt_client_info.client_user=getCstring(argv[4]);
         mqtt_client_info.client_pass=getCstring(argv[6]);
         if(argc==9){
@@ -212,15 +215,16 @@ int cmd_mqtt(void){
         mqtt_client_info.client_id=ID;
 
         if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
-                if(!ip4addr_aton(IP, &state->remote_addr))error("Invalid address format");
+                if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
+                mqtt_dns.remote=remote_addr;
         } else {
-                int err = dns_gethostbyname(IP, &state->remote_addr, tcp_dns_found, state);
+                int err = dns_gethostbyname(IP, &remote_addr, mqtt_dns_found, &mqtt_dns);
                 Timer4=timeout;
-                while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                while(!mqtt_dns.complete && Timer4 && !(err==ERR_OK))ProcessWeb();
                 if(!Timer4)error("Failed to convert web address");
-                state->complete=0;
+                mqtt_dns.complete=0;
         }
-        mqtt_example_init(&state->remote_addr,state->TCP_PORT);
+        mqtt_example_init(&mqtt_dns.remote,port);
         return 1;
     }
     tp=checkstring(cmdline,"MQTT PUBLISH");
@@ -263,6 +267,7 @@ int cmd_mqtt(void){
     tp=checkstring(cmdline,"MQTT CLOSE");
     if(tp){
       if(!mqtt_client)return 1;
+      closeMQTT();
       return 1;
     }
     return 0;
