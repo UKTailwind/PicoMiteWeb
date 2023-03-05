@@ -26,7 +26,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #include "Hardware_Includes.h"
 #define DEBUG_printf
 
-static char Telnetbuff[TCP_MSS]={0};
+static char Telnetbuff[256]={0};
 static int Telnetpos=0;
 static const uint8_t telnet_init_options[] =
 {
@@ -74,7 +74,7 @@ void __not_in_flash_func(TelnetPutC)(int c,int flush){
                         Telnetpos++;
                 }
         }
-        if(Telnetpos==TCP_MSS || (flush==-1 && Telnetpos)){
+        if(Telnetpos==sizeof(Telnetbuff) || (flush==-1 && Telnetpos)){
                 int pcb=state->telnet_pcb_no;
                 state->to_send[pcb]=Telnetpos;
                 state->buffer_sent[state->telnet_pcb_no]=Telnetbuff;
@@ -86,8 +86,7 @@ void __not_in_flash_func(TelnetPutC)(int c,int flush){
         }
 }
 err_t tcp_telnet_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-        static char buff[1024]={0};
-        static int count=0, lastchar=-1;
+        static int lastchar=-1;
         TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
         int pcb=state->telnet_pcb_no;
         if (!p) {
@@ -95,16 +94,13 @@ err_t tcp_telnet_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         }
         cyw43_arch_lwip_check();
         if (p->tot_len > 0) {
-               state->recv_len[pcb] = pbuf_copy_partial(p, buff , sizeof(buff), 0);
                 tcp_recved(tpcb, p->tot_len);
-                count++;
-//                DEBUG_printf("tcp_telnet_recv %d / %d\r\n",count, state->recv_len[i]);
-                if(buff[0]==255){
-                        for(int i=0;i<p->tot_len;i++)DEBUG_printf("%d,",buff[i]);
+                if(((char *)p->payload)[0]==255){
+                        for(int i=0;i<p->tot_len;i++)DEBUG_printf("%d,",((char *)p->payload)[i]);
                         DEBUG_printf("\r\n");
                 } else {
-                        for(int j=0;j<state->recv_len[pcb];j++){
-                                ConsoleRxBuf[ConsoleRxBufHead] = buff[j];
+                        for(int j=0;j<p->tot_len;j++){
+                                ConsoleRxBuf[ConsoleRxBufHead] = ((char *)p->payload)[j];
                                 if((lastchar==13 && ConsoleRxBuf[ConsoleRxBufHead]==0) ||
                                 (lastchar==255 && ConsoleRxBuf[ConsoleRxBufHead]==255)){
                                         lastchar=-1;

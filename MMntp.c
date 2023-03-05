@@ -31,7 +31,6 @@ NTP_T *NTPstate=NULL;
 #define NTP_DELTA 2208988800 // seconds between 1 Jan 1900 and 1 Jan 1970
 #define NTP_TEST_TIME (30 * 1000)
 #define NTP_RESEND_TIME (10 * 1000)
-volatile int NTPdone=0;
 volatile time_t timeadjust=0;
 // Called with results of operation
 static void ntp_result(NTP_T* state, int status, time_t *result) {
@@ -48,10 +47,10 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         day_of_week=utc->tm_wday;
         if(day_of_week==0)day_of_week=7;
         year = utc->tm_year + 1900;
-	month = utc->tm_mon + 1;
-	day = utc->tm_mday;
+        month = utc->tm_mon + 1;
+        day = utc->tm_mday;
         uSec(200);
-        NTPdone=1;
+        state->complete=1;
     }
 }
 
@@ -63,14 +62,12 @@ static void ntp_request(NTP_T *state) {
     // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
     // these calls are a no-op and can be omitted, but it is a good practice to use them in
     // case you switch the cyw43_arch type later.
-    cyw43_arch_lwip_begin();
     struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, NTP_MSG_LEN, PBUF_RAM);
     uint8_t *req = (uint8_t *) p->payload;
     memset(req, 0, NTP_MSG_LEN);
     req[0] = 0x1b;
     udp_sendto(state->ntp_pcb, p, &state->ntp_server_address, NTP_PORT);
     pbuf_free(p);
-    cyw43_arch_lwip_end();
 }
 
 static int64_t ntp_failed_handler(alarm_id_t id, void *user_data)
@@ -86,10 +83,7 @@ static void ntp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *a
     NTP_T *state = (NTP_T*)arg;
     if (ipaddr) {
         state->ntp_server_address = *ipaddr;
-        char buff[STRINGSIZE]={0};
-        sprintf(buff,"ntp address %s\r\n", ip4addr_ntoa(&state->ntp_server_address));
-        MMPrintString(buff);
-        ntp_request(state);
+        state->complete=1;
     } else {
         free(state);
         error("ntp dns request failed");
@@ -127,42 +121,48 @@ static NTP_T* ntp_init(void) {
         error("failed to allocate state\n");
         return NULL;
     }
-    state->ntp_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
-    if (!state->ntp_pcb) {
-        error("failed to create pcb\n");
-        free((void *)state);
-        return NULL;
-    }
-    udp_recv(state->ntp_pcb, ntp_recv, state);
     return state;
-}
-void GetNTPTime(void){
-        NTP_T *state = ntp_init();
-        if (!state) error("Can't create NTP structure");
-        int err = dns_gethostbyname(NTP_SERVER, &state->ntp_server_address, ntp_dns_found, state);
-
-       if (err == ERR_OK) {
-                char buff[STRINGSIZE]={0};
-                sprintf(buff,"ntp address %s\r\n", ip4addr_ntoa(&state->ntp_server_address));
-                MMPrintString(buff);
-                ntp_request(state); // Cached result
-        } else if (err != ERR_INPROGRESS) { // ERR_INPROGRESS means expect a callback
-                free(state);
-                error("dns request failed");
-        }
 }
 
 void cmd_ntp(unsigned char *tp){
-            getargs(&tp,1,",");
-            if (argc == 1){
+            getargs(&tp,3,",");
+            NTP_T *state = ntp_init();
+            if (!state) error("Can't create NTP structure");
+            ip4_addr_t remote_addr;
+            char *IP=GetTempMemory(STRINGSIZE);
+            if (argc >=1){
                 MMFLOAT adjust = getnumber(argv[0]);
                 if (adjust < -12.0 || adjust > 14.0) error("Invalid Time Offset");
                 timeadjust=(time_t)(adjust*3600.0);
             } else timeadjust=0;
-            GetNTPTime(); 
+            if(argc==3)strcpy(IP,getCstring(argv[2]));
+            else strcpy(IP,NTP_SERVER);
+            if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
+                    if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
+                    state->ntp_server_address=remote_addr;
+            } else {
+                    int err = dns_gethostbyname(IP, &remote_addr, ntp_dns_found, state);
+                    if(err==ERR_OK)state->ntp_server_address=remote_addr;
+                    else if(err==ERR_INPROGRESS){
+                        Timer4=5000;
+                        while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                        if(!Timer4)error("Failed to convert web address");
+                        state->complete=0;
+                    } else error("Failed to find NTP address");
+            }
+            char buff[STRINGSIZE]={0};
+            sprintf(buff,"ntp address %s\r\n", ip4addr_ntoa(&state->ntp_server_address));
+            MMPrintString(buff);
+            state->ntp_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
+            if (!state->ntp_pcb) {
+                free((void *)state);
+                error("failed to create pcb\n");
+            }
+            udp_recv(state->ntp_pcb, ntp_recv, state);
+            ntp_request(state);
             Timer4=5000;
-            while(!NTPdone){
-                if(startupcomplete)ProcessWeb();
+            while(!state->complete){
+                ProcessWeb();
                 if(!Timer4){
                         udp_remove(NTPstate->ntp_pcb);
                         memset(NTPstate,0,sizeof(NTPstate));
@@ -170,9 +170,8 @@ void cmd_ntp(unsigned char *tp){
                         error("NTP timeout");
                 }
             }
-            NTPdone=0;
             udp_remove(NTPstate->ntp_pcb);
-            memset(NTPstate,0,sizeof(NTPstate));
+//            memset(NTPstate,0,sizeof(NTPstate));
             free(NTPstate);
 
 }
