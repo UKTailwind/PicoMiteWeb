@@ -36,7 +36,7 @@ typedef struct TLS_CLIENT_T_ {
     bool complete;
     int port;
     ip_addr_t remote_addr;
-    char TLS_CLIENT_SERVER[STRINGSIZE];
+    char *TLS_CLIENT_SERVER;
     uint8_t *buffer;
     int BUF_SIZE;
     int buffer_len;
@@ -202,7 +202,7 @@ static TLS_CLIENT_T* tls_client_init(void) {
         printf("failed to allocate state\n");
         return NULL;
     }
-
+    state->TLS_CLIENT_SERVER = calloc(1,STRINGSIZE);
     return state;
 }
 
@@ -299,6 +299,7 @@ int cmd_tls() {
             TLS_CLIENT_T *state = TLS_CLIENT;
             if(!state)error("No connection");
             tls_client_close(state) ;
+            free(state->TLS_CLIENT_SERVER);
             free(state);
             TCP_CLIENT=NULL;
             if(tls_config)altcp_tls_free_config(tls_config);
