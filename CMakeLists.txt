@@ -47,6 +47,8 @@ add_executable(PicoMiteWeb
     MMntp.c
     MMtcpserver.c
     MMtls.c
+    tftp.c
+    MMtftp.c
 )
 target_include_directories(PicoMiteWeb PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
