@@ -152,19 +152,25 @@ int cmd_tcpclient(void){
             int timeout=2000;
             getargs(&tp,3,",");
             if(argc!=3)error("Syntax");
+            ip4_addr_t remote_addr;
+            char *IP=GetTempMemory(STRINGSIZE);
             TCP_CLIENT_T *state = tcp_client_init();
-            state->hostname=getCstring(argv[0]);
+            IP=getCstring(argv[0]);
             int port=getint(argv[2],1,65535);
             TCP_CLIENT=state;
             state->TCP_PORT=port;
-            if(!isalpha(*state->hostname)){
-                    if(!ip4addr_aton(state->hostname, &state->remote_addr))error("Invalid address format");
+            if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
+                    if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
+                    state->remote_addr=remote_addr;
             } else {
-                    int err = dns_gethostbyname(state->hostname, &state->remote_addr, tcp_dns_found, state);
-                    Timer4=timeout;
-                    while(!state->complete && Timer4 && !(err==ERR_OK)){{if(startupcomplete)cyw43_arch_poll();}};
-                    if(!Timer4)error("Failed to convert web address");
-                    state->complete=0;
+                    int err = dns_gethostbyname(IP, &remote_addr, tcp_dns_found, state);
+                    if(err==ERR_OK)state->remote_addr=remote_addr;
+                    else if(err==ERR_INPROGRESS){
+                        Timer4=5000;
+                        while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                        if(!Timer4)error("Failed to convert web address");
+                        state->complete=0;
+                    } else error("Failed to find TCP address");
             }
             if (!tcp_client_open(state)) {
                     error("Failed to open client");
