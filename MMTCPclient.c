@@ -149,14 +149,15 @@ int cmd_tcpclient(void){
     unsigned char *tp;
     tp=checkstring(cmdline, "OPEN TCP CLIENT");
     if(tp){
-            int timeout=2000;
-            getargs(&tp,3,",");
-            if(argc!=3)error("Syntax");
+            int timeout=5000;
+            getargs(&tp,5,",");
+            if(argc<3)error("Syntax");
             ip4_addr_t remote_addr;
             char *IP=GetTempMemory(STRINGSIZE);
             TCP_CLIENT_T *state = tcp_client_init();
             IP=getCstring(argv[0]);
             int port=getint(argv[2],1,65535);
+            if(argc==5)timeout=getint(argv[4],1,100000);
             TCP_CLIENT=state;
             state->TCP_PORT=port;
             if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
@@ -166,7 +167,7 @@ int cmd_tcpclient(void){
                     int err = dns_gethostbyname(IP, &remote_addr, tcp_dns_found, state);
                     if(err==ERR_OK)state->remote_addr=remote_addr;
                     else if(err==ERR_INPROGRESS){
-                        Timer4=5000;
+                        Timer4=timeout;
                         while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
                         if(!Timer4)error("Failed to convert web address");
                         state->complete=0;
@@ -205,7 +206,7 @@ int cmd_tcpclient(void){
                     dest[0]=0;
                     q=(uint8_t *)&dest[1];
             } else error("Argument 2 must be integer array");
-            if(argc==5)timeout=getint(argv[4],1,0xFFFFFF);
+            if(argc==5)timeout=getint(argv[4],1,100000);
             state->BUF_SIZE=size;
             state->buffer=q;
             state->buffer_len=0;

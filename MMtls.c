@@ -229,16 +229,17 @@ static TLS_CLIENT_T* tls_client_init(void) {
 int cmd_tls() {
     unsigned char *tp = checkstring(cmdline, "OPEN TLS CLIENT");
     if(tp) {
-           int timeout=2000;
-            getargs(&tp,3,",");
-            if(argc!=3)error("Syntax");
+           int timeout=5000;
+            getargs(&tp,5,",");
+            if(argc<3)error("Syntax");
             TLS_CLIENT_T *state = tls_client_init();
             strcpy(state->TLS_CLIENT_SERVER,getCstring(argv[0]));
             state->port=getint(argv[2],1,65535);
             TLS_CLIENT=state;
+            if(argc==5)timeout=getint(argv[4],1,100000);
             tls_config = altcp_tls_create_config_client(NULL, 0);
             tls_client_open(state->TLS_CLIENT_SERVER, state);
-            Timer4=10000;
+            Timer4=timeout;
             while(!state->complete && Timer4) {
                 // the following #ifdef is only here so this same example can be used in multiple modes;
                 // you do not need it in your code
@@ -278,7 +279,7 @@ int cmd_tls() {
                     dest[0]=0;
                     q=(uint8_t *)&dest[1];
             } else error("Argument 2 must be integer array");
-            if(argc==5)timeout=getint(argv[4],1,0xFFFFFF);
+            if(argc==5)timeout=getint(argv[4],1,100000);
             state->BUF_SIZE=size;
             state->buffer=q;
             state->buffer_len=0;

@@ -125,8 +125,9 @@ static NTP_T* ntp_init(void) {
 }
 
 void cmd_ntp(unsigned char *tp){
-            getargs(&tp,3,",");
+            getargs(&tp,5,",");
             NTP_T *state = ntp_init();
+            int timeout=5000;
             if (!state) error("Can't create NTP structure");
             ip4_addr_t remote_addr;
             char *IP=GetTempMemory(STRINGSIZE);
@@ -135,8 +136,9 @@ void cmd_ntp(unsigned char *tp){
                 if (adjust < -12.0 || adjust > 14.0) error("Invalid Time Offset");
                 timeadjust=(time_t)(adjust*3600.0);
             } else timeadjust=0;
-            if(argc==3)strcpy(IP,getCstring(argv[2]));
+            if(argc>=3 && *argv[2])strcpy(IP,getCstring(argv[2]));
             else strcpy(IP,NTP_SERVER);
+            if(argc==5)timeout=getint(argv[4],0,100000);
             if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
                     if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
                     state->ntp_server_address=remote_addr;
@@ -144,7 +146,7 @@ void cmd_ntp(unsigned char *tp){
                     int err = dns_gethostbyname(IP, &remote_addr, ntp_dns_found, state);
                     if(err==ERR_OK)state->ntp_server_address=remote_addr;
                     else if(err==ERR_INPROGRESS){
-                        Timer4=5000;
+                        Timer4=timeout;
                         while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
                         if(!Timer4)error("Failed to convert web address");
                         state->complete=0;
@@ -160,7 +162,7 @@ void cmd_ntp(unsigned char *tp){
             }
             udp_recv(state->ntp_pcb, ntp_recv, state);
             ntp_request(state);
-            Timer4=5000;
+            Timer4=timeout;
             while(!state->complete){
                 ProcessWeb();
                 if(!Timer4){

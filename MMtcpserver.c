@@ -49,6 +49,7 @@ static TCP_SERVER_T* tcp_server_init(void) {
 }
 
 err_t tcp_server_close(void *arg, int pcb) {
+    if(pcb==99)return ERR_OK;
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     err_t err = ERR_OK;
     if (state->client_pcb[pcb] != 0) {
