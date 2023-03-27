@@ -74,12 +74,12 @@ void __not_in_flash_func(TelnetPutC)(int c,int flush){
                         Telnetpos++;
                 }
         }
-        if(Telnetpos==sizeof(Telnetbuff) || (flush==-1 && Telnetpos)){
+        if(Telnetpos>=sizeof(Telnetbuff-4) || (flush==-1 && Telnetpos)){
                 int pcb=state->telnet_pcb_no;
                 state->to_send[pcb]=Telnetpos;
                 state->buffer_sent[state->telnet_pcb_no]=Telnetbuff;
                 if(state->client_pcb[pcb]){
-                        cyw43_arch_lwip_check();
+//                        cyw43_arch_lwip_check();
                         tcp_server_send_data(state, state->client_pcb[pcb], pcb);
                 }
                 Telnetpos=0;
@@ -130,8 +130,8 @@ void tcp_telnet_err(void *arg, err_t err) {
 //    if (err != ERR_ABRT) {
         char buff[STRINGSIZE]={0};
         DEBUG_printf("Telnet disconnected %d\r\n", err);
-        state->telnet_pcb_no=99;
         tcp_server_close(arg,state->telnet_pcb_no);
+        state->telnet_pcb_no=99;
 //        if(!CurrentLinePtr) longjmp(mark, 1);  
 //        else longjmp(ErrNext,1) ;
 //    }

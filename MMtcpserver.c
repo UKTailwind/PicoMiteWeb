@@ -318,7 +318,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
 }
 static bool tcp_server_open(void *arg) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    if(TCP_PORT){
+    if(TCP_PORT && WIFIconnected){
         MMPrintString("Starting server at ");
         MMPrintString(ip4addr_ntoa(netif_ip4_addr(netif_list)));
         MMPrintString(" on port ");
@@ -518,18 +518,18 @@ void cmd_transmit(unsigned char *cmd){
         int t;
         char *fname;
         char c;
-        char valbuf[STRINGSIZE];
         char vartest[MAXVARLEN];
         int vartestp;
 	void *ptr = NULL;
         int FileSize, n_read;
         int savepointer=0;
-        char outstr[255]={0};
         char p[10]={0};
-        strcat(outstr,httpheaders);
-        strcat(outstr,httphtml);
     	getargs(&tp, 3, ",");
         if(argc!=3)error("Argument count");
+        char *outstr=GetTempMemory(STRINGSIZE);
+        char *valbuf=GetTempMemory(STRINGSIZE);
+        strcat(outstr,httpheaders);
+        strcat(outstr,httphtml);
         TCP_SERVER_T *state = (TCP_SERVER_T*)TCPstate;
         int pcb = getint(argv[0],1,MaxPcb)-1;
         fname=getCstring(argv[2]);
@@ -629,7 +629,7 @@ void cmd_transmit(unsigned char *cmd){
                 checksent(state,0,pcb);
         }
         tcp_server_close(state,pcb);
-        {if(startupcomplete)cyw43_arch_poll();}
+        ProcessWeb();
         return;
     }
     error("Invalid option");
