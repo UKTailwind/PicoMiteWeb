@@ -256,17 +256,21 @@ int cmd_tls() {
             int64_t *dest=NULL;
             uint8_t *q=NULL;
             int size, timeout=5000;
+            int header=1;
             TLS_CLIENT_T *state = TLS_CLIENT;
-            getargs(&tp,5,",");
+            getargs(&tp,7,",");
             if(!state)error("No connection");
             if(!state->complete)error("Open failed to complete");
             if(argc<3)error("Syntax");
             char *request=GetTempMemory(STRINGSIZE*2);
             strcpy(request,getCstring(argv[0]));
-            if(request[strlen(request)-2]==10)request[strlen(request)-2]=0;
-            strcat(request," HTTP/1.1\r\nHost: ");
-            strcat(request,state->TLS_CLIENT_SERVER);
-            strcat(request, "\r\nConnection: close\r\n\r\n");
+            if(argc==7)header=getint(argv[6],0,1);
+            if(header){
+                if(request[strlen(request)-2]==10)request[strlen(request)-2]=0;
+                strcat(request," HTTP/1.1\r\nHost: ");
+                strcat(request,state->TLS_CLIENT_SERVER);
+                strcat(request, "\r\nConnection: close\r\n\r\n");
+            }
 //            strcpy(request,TLS_CLIENT_HTTP_REQUEST);
             ptr1 = findvar(argv[2], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
             if(vartbl[VarIndex].type & T_INT) {
@@ -279,7 +283,7 @@ int cmd_tls() {
                     dest[0]=0;
                     q=(uint8_t *)&dest[1];
             } else error("Argument 2 must be integer array");
-            if(argc==5)timeout=getint(argv[4],1,100000);
+            if(argc>=5 && *argv[4])timeout=getint(argv[4],1,100000);
             state->BUF_SIZE=size;
             state->buffer=q;
             state->buffer_len=0;

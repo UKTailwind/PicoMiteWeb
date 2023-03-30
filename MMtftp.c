@@ -16,8 +16,8 @@ void* tftp_open(const char* fname, const char* fmode, u8_t write){
         mode = FA_READ;
         MMPrintString("TFTP request to read ");
     }
-        MMPrintString(strcmp(fmode,"octet")==0? "binary file : " : "ascii file : ");
-        MMPrintString((char *)fname);PRet();
+    MMPrintString(strcmp(fmode,"octet")==0? "binary file : " : "ascii file : ");
+    MMPrintString((char *)fname);PRet();
     if (!BasicFileOpen((char *)fname, tftp_fnbr, mode))
             return NULL;
     return &tftp_fnbr;
