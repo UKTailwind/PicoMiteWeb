@@ -50,6 +50,7 @@ add_executable(PicoMiteWeb
     tftp.c
     MMtftp.c
 )
+set_source_files_properties(mmc_stm32.c PROPERTIES COMPILE_FLAGS -O3)
 target_include_directories(PicoMiteWeb PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts
@@ -61,7 +62,18 @@ pico_set_boot_stage2(PicoMiteWeb slower_boot2)
 Pico_enable_stdio_usb(PicoMiteWeb 1)
 pico_enable_stdio_uart(PicoMiteWeb 0)
 pico_add_extra_outputs(PicoMiteWeb)
-target_compile_options(PicoMiteWeb PRIVATE  -DPICO_CYW43_ARCH_POLL -DCYW43_HOST_NAME="WebMite" -DNDEBUG -DPICOMITEWEB -DPICO_FLASH_SIZE_BYTES=16777216 -DPICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=0 -DPICO_STACK_SIZE=0x1800 -DPICO_CORE1_STACK_SIZE=0x0 -DPICO_HEAP_SIZE=0x9000 -O2)
+pico_set_printf_implementation(PicoMiteWeb compiler)
+target_compile_options(PicoMiteWeb PRIVATE  -DPICOMITEWEB 
+											-DNDEBUG 
+	                                        -DPICO_XOSC_STARTUP_DELAY_MULTIPLIER=64 
+											-DPICO_FLASH_SIZE_BYTES=16777216 
+											-DPICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=0 
+											-DPICO_STACK_SIZE=0x1800 
+											-DPICO_CORE1_STACK_SIZE=0x0 
+											-DPICO_HEAP_SIZE=0x9000 
+											-DPICO_CYW43_ARCH_POLL 
+											-DCYW43_HOST_NAME="WebMite" 
+											-O2)
 target_link_libraries(PicoMiteWeb
     pico_stdlib
     hardware_flash
@@ -73,7 +85,6 @@ target_link_libraries(PicoMiteWeb
     hardware_dma
     hardware_exception 
 	hardware_pio
-#    pico_cyw43_arch_lwip_threadsafe_background
     pico_cyw43_arch_lwip_poll
     pico_lwip_mbedtls
     pico_mbedtls
