@@ -62,7 +62,6 @@ pico_set_boot_stage2(PicoMiteWeb slower_boot2)
 Pico_enable_stdio_usb(PicoMiteWeb 1)
 pico_enable_stdio_uart(PicoMiteWeb 0)
 pico_add_extra_outputs(PicoMiteWeb)
-pico_set_printf_implementation(PicoMiteWeb compiler)
 target_compile_options(PicoMiteWeb PRIVATE  -DPICOMITEWEB 
 											-DNDEBUG 
 	                                        -DPICO_XOSC_STARTUP_DELAY_MULTIPLIER=64 
