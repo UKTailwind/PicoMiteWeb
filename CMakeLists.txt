@@ -49,6 +49,7 @@ add_executable(PicoMiteWeb
     MMtls.c
     tftp.c
     MMtftp.c
+    MMudp.c
 )
 set_source_files_properties(mmc_stm32.c PROPERTIES COMPILE_FLAGS -O3)
 target_include_directories(PicoMiteWeb PRIVATE

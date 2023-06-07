@@ -13,7 +13,8 @@
 #define LWIP_ALTCP_TLS           1
 #define LWIP_ALTCP_TLS_MBEDTLS   1
 #define DNS_TABLE_SIZE           1
-
+#define IP_SOF_BROADCAST         1
+#define IP_SOF_BROADCAST_RECV    1
 #define LWIP_DEBUG 1
 #define ALTCP_MBEDTLS_DEBUG  LWIP_DBG_ON
 #define MEMP_NUM_SYS_TIMEOUT   (LWIP_NUM_SYS_TIMEOUT_INTERNAL + 2) // <-------- +1 for MQTT

@@ -116,7 +116,6 @@ err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb, int pcb)
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
     // can use this method to cause an assertion in debug mode, if this method is called when
     // cyw43_arch_lwip_begin IS needed
-    cyw43_arch_lwip_check();
     int t;
     while((t=tcp_sndqueuelen(tpcb))>6){
         DEBUG_printf("Send queue %u\r\n", t);
@@ -144,7 +143,8 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     	        if(!CurrentLinePtr){  // deal with requests when we don't want them
                         tcp_recved(tpcb, p->tot_len);
                         DEBUG_printf("Sending 404 on pcb %d, rbuff address is %x ",pcb, (uint32_t)state->buffer_recv[pcb]);
-                        state->to_send[pcb]=strlen(httpheadersfail);
+                        state->sent_len[pcb]=0;
+                        state->to_send[pcb]= state->total_sent[pcb] = strlen(httpheadersfail);
                         state->buffer_sent[pcb]=(char *)httpheadersfail;
                         if(state->client_pcb[pcb]){
                                 tcp_server_send_data(state, state->client_pcb[pcb],pcb);
@@ -189,15 +189,6 @@ err_t tcp_server_recv6(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t er
 err_t tcp_server_recv7(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
         tcp_server_recv(arg, tpcb, p, err,7);
 }
-/*static err_t tcp_server_poll(void *arg, struct tcp_pcb *tpcb) {
-    TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    DEBUG_printf("tcp_server_poll_fn\n");
-        int i=0;
-        while(state->client_pcb[i]!=tpcb && i<=MaxPcb)i++;
-        if(i==MaxPcb)error("Internal TCP receive error");
-        state->write_pcb=i;
-        tcp_server_close(arg);
-}*/
 
 static void tcp_server_err(void *arg, err_t err, int pcb) {
     if (err != ERR_ABRT) {
@@ -319,7 +310,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
 static bool tcp_server_open(void *arg) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     if(TCP_PORT && WIFIconnected){
-        MMPrintString("Starting server at ");
+        MMPrintString("Starting TCP server at ");
         MMPrintString(ip4addr_ntoa(netif_ip4_addr(netif_list)));
         MMPrintString(" on port ");
         PInt(TCP_PORT);PRet();
@@ -500,7 +491,7 @@ void cmd_transmit(unsigned char *cmd){
                 {if(startupcomplete)cyw43_arch_poll();}
                 FileClose(fn);
         } else {
-                state->to_send[pcb]=strlen(httpheadersfail);
+                state->to_send[pcb]= state->total_sent[pcb] = strlen(httpheadersfail);
                 state->buffer_sent[pcb]=(char *)httpheadersfail;
                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
                 checksent(state,0, pcb);
@@ -603,7 +594,7 @@ void cmd_transmit(unsigned char *cmd){
                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
                 DEBUG_printf("sending page header to pcb %d\r\n",pcb);
 //
-                state->to_send[pcb]=strlen(SocketOut);
+//                state->to_send[pcb]=strlen(SocketOut);
                 state->buffer_sent[pcb]=SocketOut;
                 int bufflen=strlen(SocketOut);
                 while(bufflen>TCP_MSS){
@@ -634,10 +625,8 @@ void cmd_transmit(unsigned char *cmd){
     }
     error("Invalid option");
 }
-void open_tcp_server(int full){
-//        if(!Option.TCP_PORT)return;
+void open_tcp_server(void){
         tcp_server_init();
-        if(!full)return;
         TCP_PORT=Option.TCP_PORT;
         if (!TCPstate) {
                 MMPrintString("Failed to create TCP server\r\n");
@@ -727,10 +716,24 @@ int cmd_tcpserver(void){
                 } else error("Argument must be integer array");
                 int j=(vartbl[VarIndex].dims[0] - OptionBase);
                 state->buffer_sent[pcb]=q;
-                state->to_send[pcb]=dest[0];
-                if(state->client_pcb[pcb])tcp_server_send_data(state, state->client_pcb[pcb], pcb);
-                cyw43_arch_lwip_check();
-           return 1;   
+                int bufflen=dest[0];
+                state->to_send[pcb] = state->total_sent[pcb] = state->sent_len[pcb]=0;
+                while(bufflen>TCP_MSS){
+                        state->to_send[pcb]=TCP_MSS;
+                        state->total_sent[pcb]+=TCP_MSS;
+                        tcp_server_send_data(state, state->client_pcb[pcb], pcb);
+                        DEBUG_printf("sending page to pcb %d\r\n",pcb);
+                        bufflen-=TCP_MSS;
+                        state->buffer_sent[pcb]+=TCP_MSS;
+                }
+                state->to_send[pcb]=bufflen;
+                state->total_sent[pcb]+=bufflen;
+                tcp_server_send_data(state, state->client_pcb[pcb], pcb);
+                DEBUG_printf("sending page end to pcb %d\r\n",pcb);
+                checksent(state,0, pcb);
+//                tcp_server_close(state,pcb);
+                ProcessWeb();
+                return 1;   
         }
         return 0;
 }

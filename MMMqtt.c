@@ -189,8 +189,8 @@ int cmd_mqtt(void){
     unsigned char *tp=checkstring(cmdline,"MQTT CONNECT");
     if(tp){
         getargs(&tp,9,",");
-        char *IP=GetMemory(STRINGSIZE);
-        char *ID=GetMemory(STRINGSIZE);
+        char *IP=GetTempMemory(STRINGSIZE);
+        char *ID=GetTempMemory(STRINGSIZE);
         if(mqtt_client)error("Already connected");
         int timeout=5000;
         if(!(argc==7 || argc==9))error("Syntax");
@@ -209,7 +209,7 @@ int cmd_mqtt(void){
         }
         else MQTTInterrupt=NULL;
         MQTTComplete=0;
-        strcpy(ID,"PicoMiteWeb");
+        strcpy(ID,"WebMite");
         strcat(ID,id_out);
         IntToStr(&ID[strlen(ID)],time_us_64(),16);
         mqtt_client_info.client_id=ID;
