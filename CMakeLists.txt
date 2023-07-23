@@ -40,6 +40,7 @@ add_executable(PicoMiteWeb
     picojpeg.c
     lfs.c
     lfs_util.c
+	hxcmod.c
     cjson.c
     mqtt.c
     MMmqtt.c
