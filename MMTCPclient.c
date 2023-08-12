@@ -194,7 +194,7 @@ int cmd_tcpclient(void){
             if(!state)error("No connection");
             if(!state->connected)error("No connection");
             if(argc<3)error("Syntax");
-            char *request=getCstring(argv[0]);
+            char *request=getstring(argv[0]);
             ptr1 = findvar(argv[2], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
             if(vartbl[VarIndex].type & T_INT) {
                     if(vartbl[VarIndex].dims[1] != 0) error("Invalid variable");
@@ -210,7 +210,7 @@ int cmd_tcpclient(void){
             state->BUF_SIZE=size;
             state->buffer=q;
             state->buffer_len=0;
-            err_t err = tcp_write(state->tcp_pcb, request, strlen(request), 0);
+            err_t err = tcp_write(state->tcp_pcb, &request[1], (uint32_t)request[0], 0);
             if(err)error("write failed %",err);
             Timer4=timeout;
             while(!state->buffer_len && Timer4)ProcessWeb();

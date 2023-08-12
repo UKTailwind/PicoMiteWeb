@@ -158,6 +158,7 @@ mqtt_example_init(ip_addr_t *mqtt_ip, int port)
 #if LWIP_TCP
 mqtt_connection_status_t status;
   mqtt_client = mqtt_client_new();
+  mqtt_client->keep_alive=100;
     printf("Connecting to %s port %u\r\n", ip4addr_ntoa(mqtt_ip), port);
 
   mqtt_client_connect(mqtt_client,

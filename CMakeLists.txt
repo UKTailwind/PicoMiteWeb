@@ -41,9 +41,9 @@ add_executable(PicoMiteWeb
     lfs.c
     lfs_util.c
 	hxcmod.c
-    cjson.c
+    cJSON.c
     mqtt.c
-    MMmqtt.c
+    MMMqtt.c
     MMTCPclient.c
     MMtelnet.c
     MMntp.c
