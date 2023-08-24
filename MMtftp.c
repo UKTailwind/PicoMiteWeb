@@ -10,14 +10,15 @@ void* tftp_open(const char* fname, const char* fmode, u8_t write){
     tftp_fnbr=FindFreeFileNbr();
     if (write){
         mode = FA_WRITE | FA_CREATE_ALWAYS;
-        MMPrintString("TFTP request to create ");
+        if(!optionsuppressstatus)MMPrintString("TFTP request to create ");
     }
     else {
         mode = FA_READ;
-        MMPrintString("TFTP request to read ");
+        if(!optionsuppressstatus)MMPrintString("TFTP request to read ");
     }
-    MMPrintString(strcmp(fmode,"octet")==0? "binary file : " : "ascii file : ");
-    MMPrintString((char *)fname);PRet();
+    if(!optionsuppressstatus)MMPrintString(strcmp(fmode,"octet")==0? "binary file : " : "ascii file : ");
+    if(!optionsuppressstatus)MMPrintString((char *)fname);
+    if(!optionsuppressstatus)PRet();
     if (!BasicFileOpen((char *)fname, tftp_fnbr, mode))
             return NULL;
     return &tftp_fnbr;
@@ -26,7 +27,7 @@ void tftp_close(void* handle){
     int nbr;
     int fnbr=*(int *)handle;
     FileClose(fnbr);
-    MMPrintString("TFTP transfer complete\r\n");
+    if(!optionsuppressstatus)MMPrintString("TFTP transfer complete\r\n");
 }
 int tftp_read(void* handle, void* buf, int bytes){
     int n_read;

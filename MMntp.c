@@ -31,7 +31,9 @@ NTP_T *NTPstate=NULL;
 #define NTP_DELTA 2208988800 // seconds between 1 Jan 1900 and 1 Jan 1970
 #define NTP_TEST_TIME (30 * 1000)
 #define NTP_RESEND_TIME (10 * 1000)
+extern volatile int processtick;
 volatile time_t timeadjust=0;
+volatile uint8_t seconds_buf[4] = {0};
 // Called with results of operation
 static void ntp_result(NTP_T* state, int status, time_t *result) {
     if (status == 0 && result) {
@@ -40,7 +42,8 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         char buff[STRINGSIZE]={0};
         sprintf(buff,"got ntp response: %02d/%02d/%04d %02d:%02d:%02d\r\n", utc->tm_mday, utc->tm_mon + 1, utc->tm_year + 1900,
                utc->tm_hour, utc->tm_min, utc->tm_sec);
-        MMPrintString(buff);
+        if(!optionsuppressstatus)MMPrintString(buff);
+        processtick=0;
         hour = utc->tm_hour;
         minute = utc->tm_min;
         second = utc->tm_sec;
@@ -49,8 +52,7 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         year = utc->tm_year + 1900;
         month = utc->tm_mon + 1;
         day = utc->tm_mday;
-        uSec(200);
-        state->complete=1;
+        processtick=1;
     }
 }
 
@@ -99,12 +101,9 @@ static void ntp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_ad
     // Check the result
     if (ip_addr_cmp(addr, &state->ntp_server_address) && port == NTP_PORT && p->tot_len == NTP_MSG_LEN &&
         mode == 0x4 && stratum != 0) {
-        uint8_t seconds_buf[4] = {0};
-        pbuf_copy_partial(p, seconds_buf, sizeof(seconds_buf), 40);
-        uint32_t seconds_since_1900 = seconds_buf[0] << 24 | seconds_buf[1] << 16 | seconds_buf[2] << 8 | seconds_buf[3];
-        uint32_t seconds_since_1970 = seconds_since_1900 - NTP_DELTA;
-        time_t epoch = seconds_since_1970;
-        ntp_result(state, 0, &epoch);
+        pbuf_copy_partial(p, (void *)seconds_buf, sizeof(seconds_buf), 40);
+//        uSec(200);
+        state->complete=1;
     } else {
         pbuf_free(p);
         free(state);
@@ -154,7 +153,8 @@ void cmd_ntp(unsigned char *tp){
             }
             char buff[STRINGSIZE]={0};
             sprintf(buff,"ntp address %s\r\n", ip4addr_ntoa(&state->ntp_server_address));
-            MMPrintString(buff);
+            if(!optionsuppressstatus)MMPrintString(buff);
+            memset((void *)seconds_buf, 0, sizeof(seconds_buf));
             state->ntp_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
             if (!state->ntp_pcb) {
                 free((void *)state);
@@ -171,6 +171,12 @@ void cmd_ntp(unsigned char *tp){
                         free(NTPstate);
                         error("NTP timeout");
                 }
+            }
+            uint32_t seconds_since_1900 = seconds_buf[0] << 24 | seconds_buf[1] << 16 | seconds_buf[2] << 8 | seconds_buf[3];
+            if(seconds_since_1900){
+                uint32_t seconds_since_1970 = seconds_since_1900 - NTP_DELTA;
+                time_t epoch = seconds_since_1970;
+                ntp_result(state, 0, &epoch);
             }
             udp_remove(NTPstate->ntp_pcb);
 //            memset(NTPstate,0,sizeof(NTPstate));

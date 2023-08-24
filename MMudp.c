@@ -42,7 +42,7 @@ void udp_server_init(void){
     udppcb=udp_new();
     ip_set_option(udppcb, SOF_BROADCAST);
     err_t ret;
-    if(Option.UDP_PORT && WIFIconnected){
+    if(Option.UDP_PORT && WIFIconnected && !optionsuppressstatus){
         MMPrintString("Starting UDP server at ");
         MMPrintString(ip4addr_ntoa(netif_ip4_addr(netif_list)));
         MMPrintString(" on port ");

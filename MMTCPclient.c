@@ -43,7 +43,7 @@ void tcp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg) {
         state->remote_addr = *ipaddr;
         char buff[STRINGSIZE]={0};
         sprintf(buff,"tcp address %s\r\n", ip4addr_ntoa(ipaddr));
-        MMPrintString(buff);
+        if(!optionsuppressstatus)MMPrintString(buff);
         state->complete=1;
 //        ntp_request(state);
     } else {
@@ -110,7 +110,7 @@ static err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err) {
     if (err != ERR_OK) {
         error("connect failed %", err);
     }
-    MMPrintString("Connected\r\n");
+    if(!optionsuppressstatus)MMPrintString("Connected\r\n");
     state->connected = true;
     return ERR_OK;
 }
@@ -120,7 +120,7 @@ static bool tcp_client_open(void *arg) {
     TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
     char buff[STRINGSIZE]={0};
     sprintf("Connecting to %s port %u\r\n", ip4addr_ntoa(&state->remote_addr), state->TCP_PORT);
-    MMPrintString(buff);
+    if(!optionsuppressstatus)MMPrintString(buff);
     state->tcp_pcb = tcp_new_ip_type(IP_GET_TYPE(&state->remote_addr));
     if (!state->tcp_pcb) {
         error("failed to create pcb");

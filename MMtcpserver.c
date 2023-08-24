@@ -25,7 +25,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 
 #include "MMBasic_Includes.h"
 #include "Hardware_Includes.h"
-
+int optionsuppressstatus=0;
 int TCP_PORT ;
 //#define DEBUG_printf printf
 #define DEBUG_printf
@@ -347,7 +347,7 @@ static bool tcp_server_open(void *arg) {
         if (err) {
                 char buff[STRINGSIZE]={0};
                 sprintf(buff,"failed to bind to port %d\n",23);
-                MMPrintString(buff);
+                if(!optionsuppressstatus)MMPrintString(buff);
                 return false;
         }
         state->telnet_pcb = tcp_listen_with_backlog(telnet_pcb, MaxPcb);

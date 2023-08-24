@@ -75,7 +75,7 @@ static void mqtt_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *
         dns->complete=1;
         char buff[STRINGSIZE]={0};
         sprintf(buff,"tcp address %s\r\n", ip4addr_ntoa(ipaddr));
-        MMPrintString(buff);
+        if(!optionsuppressstatus)MMPrintString(buff);
     } 
 } 
 
@@ -159,7 +159,7 @@ mqtt_example_init(ip_addr_t *mqtt_ip, int port)
 mqtt_connection_status_t status;
   mqtt_client = mqtt_client_new();
   mqtt_client->keep_alive=100;
-    printf("Connecting to %s port %u\r\n", ip4addr_ntoa(mqtt_ip), port);
+    if(!optionsuppressstatus)printf("Connecting to %s port %u\r\n", ip4addr_ntoa(mqtt_ip), port);
 
   mqtt_client_connect(mqtt_client,
           mqtt_ip, port,
