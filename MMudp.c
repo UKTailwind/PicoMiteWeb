@@ -17,31 +17,30 @@ udp_recv_func(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *
 LWIP_UNUSED_ARG(arg);
 	if(p == NULL)	return;
   void *v;
-  v = findvar("MM.MESSAGE$", T_STR | V_NOFIND_NULL);    // create the variable
-  if(v==NULL)v=findvar("MM.MESSAGE$", V_FIND | V_DIM_VAR | T_CONST);
+  v = findvar((unsigned char *)"MM.MESSAGE$", T_STR | V_NOFIND_NULL);    // create the variable
+  if(v==NULL)v=findvar((unsigned char *)"MM.MESSAGE$", V_FIND | V_DIM_VAR | T_CONST);
   
   int len = p->len;
-  if(len>255)len==255;
+  if(len>255)len=255;
   u8_t *pp=(u8_t *)v;
   memset(pp,0,256);
   memcpy(&pp[1],p->payload,len);
   pp[0]=len;
-  v = findvar("MM.ADDRESS$", T_STR | V_NOFIND_NULL);    // create the variable
-  if(v==NULL)v=findvar("MM.ADDRESS$", V_FIND | V_DIM_VAR | T_CONST);
+  v = findvar((unsigned char *)"MM.ADDRESS$", T_STR | V_NOFIND_NULL);    // create the variable
+  if(v==NULL)v=findvar((unsigned char *)"MM.ADDRESS$", V_FIND | V_DIM_VAR | T_CONST);
   pp=(u8_t *)v;
   memset(pp,0,256);
-  sprintf(&pp[1],"%d.%d.%d.%d",addr->addr&0xff,(addr->addr>>8)&0xff,(addr->addr>>16)&0xff,(addr->addr>>24)&0xff);
-  pp[0]=strlen(&pp[1]);
+  sprintf((char *)&pp[1],"%d.%d.%d.%d",(int)addr->addr&0xff,(int)(addr->addr>>8)&0xff,(int)(addr->addr>>16)&0xff,(int)(addr->addr>>24)&0xff);
+  pp[0]=strlen((char *)&pp[1]);
 //	udp_sendto(upcb, p, addr, port);
 	pbuf_free(p);
   UDPreceive=1;
 
 }
-
 void udp_server_init(void){
     udppcb=udp_new();
     ip_set_option(udppcb, SOF_BROADCAST);
-    err_t ret;
+//    err_t ret;
     if(Option.UDP_PORT && WIFIconnected && !optionsuppressstatus){
         MMPrintString("Starting UDP server at ");
         MMPrintString(ip4addr_ntoa(netif_ip4_addr(netif_list)));
@@ -58,10 +57,10 @@ void udp_server_init(void){
 void open_udp_server(void){
     udp_server_init();
     void *v;
-    v = findvar("MM.MESSAGE$", T_STR | V_NOFIND_NULL);    // create the variable
-    if(v==NULL)findvar("MM.MESSAGE$", V_FIND | V_DIM_VAR | T_CONST);
-    v = findvar("MM.ADDRESS$", T_STR | V_NOFIND_NULL);    // create the variable
-    if(v==NULL)findvar("MM.ADDRESS$", V_FIND | V_DIM_VAR | T_CONST);
+    v = findvar((unsigned char *)"MM.MESSAGE$", T_STR | V_NOFIND_NULL);    // create the variable
+    if(v==NULL)findvar((unsigned char *)"MM.MESSAGE$", V_FIND | V_DIM_VAR | T_CONST);
+    v = findvar((unsigned char *)"MM.ADDRESS$", T_STR | V_NOFIND_NULL);    // create the variable
+    if(v==NULL)findvar((unsigned char *)"MM.ADDRESS$", V_FIND | V_DIM_VAR | T_CONST);
     return;
 }
 static void udp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg) {
@@ -77,26 +76,26 @@ static void udp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *a
 
 void cmd_udp(unsigned char *p){
     unsigned char *tp;
-    tp=checkstring(p, "INTERRUPT");
+    tp=checkstring(p, (unsigned char *)"INTERRUPT");
     if(tp){
-        getargs(&tp, 1, ",");
+        getargs(&tp, 1, (unsigned char *)",");
         if(argc!=1)error("Syntax");
-        UDPinterrupt=GetIntAddress(argv[0]);
+        UDPinterrupt=(char *)GetIntAddress(argv[0]);
         InterruptUsed=true;
         UDPreceive=0;
         return;
     }
-    tp=checkstring(p, "SEND");
+    tp=checkstring(p, (unsigned char *)"SEND");
     if(tp){
-        getargs(&tp, 5, ",");
+        getargs(&tp, 5, (unsigned char *)",");
         if(argc!=5)error("Syntax");
         UDP_T *state = &UDPstate;
         state->complete=0;
         ip4_addr_t remote_addr;
         int timeout=5000;
         char *IP=GetTempMemory(STRINGSIZE);
-        strcpy(IP,getCstring(argv[0]));
-        if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
+        strcpy(IP,(char *)getCstring(argv[0]));
+        if(!isalpha((uint8_t)*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
             if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
             state->udp_server_address=remote_addr;
         } else {

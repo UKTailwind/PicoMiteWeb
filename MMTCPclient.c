@@ -30,7 +30,7 @@ TCP_CLIENT_T *TCP_CLIENT=NULL;
 TCP_CLIENT_T* tcp_client_init(void) {
     TCP_CLIENT_T *state = calloc(1, sizeof(TCP_CLIENT_T));
     if (!state) {
-        DEBUG_printf("failed to allocate state\n");
+//        DEBUG_printf("failed to allocate state\n");
         return NULL;
     }
 //  ip4addr_aton(TEST_TCP_SERVER_IP, &state->remote_addr);
@@ -62,7 +62,7 @@ static err_t tcp_client_close(void *arg) {
         tcp_err(state->tcp_pcb, NULL);
         err = tcp_close(state->tcp_pcb);
         if (err != ERR_OK) {
-            DEBUG_printf("close failed %d, calling abort\n", err);
+//            DEBUG_printf("close failed %d, calling abort\n", err);
             tcp_abort(state->tcp_pcb);
             err = ERR_ABRT;
         }
@@ -71,10 +71,11 @@ static err_t tcp_client_close(void *arg) {
     return err;
 }
 static err_t tcp_client_sent(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-        TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
-        DEBUG_printf("tcp_client_sent %u\r\n", len);
+//        TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
+//        DEBUG_printf("tcp_client_sent %u\r\n", len);
         return ERR_OK;
 }
+
 static void tcp_client_err(void *arg, err_t err) {
     if (err != ERR_ABRT) {
         error("TCP client");
@@ -90,7 +91,7 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     // cyw43_arch_lwip_begin IS needed
     cyw43_arch_lwip_check();
     if (p->tot_len > 0) {
-        DEBUG_printf("recv %d err %d\r\n", p->tot_len, err);
+//        DEBUG_printf("recv %d err %d\r\n", p->tot_len, err);
         // Receive the buffer
         const uint16_t buffer_left = state->BUF_SIZE - state->buffer_len;
         state->buffer_len += pbuf_copy_partial(p, state->buffer + state->buffer_len,
@@ -147,20 +148,20 @@ static bool tcp_client_open(void *arg) {
 }
 int cmd_tcpclient(void){
     unsigned char *tp;
-    tp=checkstring(cmdline, "OPEN TCP CLIENT");
+    tp=checkstring(cmdline, (unsigned char *)"OPEN TCP CLIENT");
     if(tp){
             int timeout=5000;
-            getargs(&tp,5,",");
+            getargs(&tp,5,(unsigned char *)",");
             if(argc<3)error("Syntax");
             ip4_addr_t remote_addr;
             char *IP=GetTempMemory(STRINGSIZE);
             TCP_CLIENT_T *state = tcp_client_init();
-            IP=getCstring(argv[0]);
+            IP=(char *)getCstring(argv[0]);
             int port=getint(argv[2],1,65535);
             if(argc==5)timeout=getint(argv[4],1,100000);
             TCP_CLIENT=state;
             state->TCP_PORT=port;
-            if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
+            if(!isalpha((uint8_t)*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
                     if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
                     state->remote_addr=remote_addr;
             } else {
@@ -183,18 +184,18 @@ int cmd_tcpclient(void){
             return 1;
     }
 
-    tp=checkstring(cmdline, "TCP CLIENT REQUEST");
+    tp=checkstring(cmdline, (unsigned char *)"TCP CLIENT REQUEST");
     if(tp){
             void *ptr1 = NULL;
             int64_t *dest=NULL;
             uint8_t *q=NULL;
-            int size, timeout=5000;
+            int size=0, timeout=5000;
             TCP_CLIENT_T *state = TCP_CLIENT;
-            getargs(&tp,5,",");
+            getargs(&tp,5,(unsigned char *)",");
             if(!state)error("No connection");
             if(!state->connected)error("No connection");
             if(argc<3)error("Syntax");
-            char *request=getstring(argv[0]);
+            char *request=(char *)getstring(argv[0]);
             ptr1 = findvar(argv[2], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
             if(vartbl[VarIndex].type & T_INT) {
                     if(vartbl[VarIndex].dims[1] != 0) error("Invalid variable");
@@ -217,7 +218,7 @@ int cmd_tcpclient(void){
             if(!Timer4)error("No response from server");
             return 1;
     }
-    tp=checkstring(cmdline, "CLOSE TCP CLIENT");
+    tp=checkstring(cmdline, (unsigned char *)"CLOSE TCP CLIENT");
     if(tp){
             TCP_CLIENT_T *state = TCP_CLIENT;
             if(!state)error("No connection");

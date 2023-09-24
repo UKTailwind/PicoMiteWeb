@@ -23,8 +23,9 @@ void* tftp_open(const char* fname, const char* fmode, u8_t write){
             return NULL;
     return &tftp_fnbr;
 }
+
 void tftp_close(void* handle){
-    int nbr;
+//    int nbr;
     int fnbr=*(int *)handle;
     FileClose(fnbr);
     if(!optionsuppressstatus)MMPrintString("TFTP transfer complete\r\n");
@@ -32,20 +33,20 @@ void tftp_close(void* handle){
 int tftp_read(void* handle, void* buf, int bytes){
     int n_read;
     int fnbr=*(int *)handle;
-    if(FatFSFileSystem)  f_read(FileTable[fnbr].fptr, buf, bytes, &n_read);
+    if(FatFSFileSystem)  f_read(FileTable[fnbr].fptr, buf, bytes, (UINT *)&n_read);
     else n_read=lfs_file_read(&lfs, FileTable[fnbr].lfsptr, buf, bytes);
     return n_read;
 }
 int tftp_write(void* handle, struct pbuf* p){
     int nbr;
     int fnbr=*(int *)handle;
-    if(filesource[fnbr]==FATFSFILE) f_write(FileTable[fnbr].fptr, p->payload, p->tot_len, &nbr);
+    if(filesource[fnbr]==FATFSFILE) f_write(FileTable[fnbr].fptr, p->payload, p->tot_len, (UINT *)&nbr);
     else {
         nbr=FSerror=lfs_file_write(&lfs, FileTable[fnbr].lfsptr, p->payload, p->tot_len); 
     }
     if(FSerror>0)FSerror=0;
     ErrorCheck(tftp_fnbr);
-    return nbr;
+    return nbr; 
 }
 void tftp_error(void* handle, int err, const char* msg, int size){
     int fnbr=*(int *)handle;

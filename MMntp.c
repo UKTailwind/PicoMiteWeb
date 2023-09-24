@@ -56,7 +56,7 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
     }
 }
 
-static int64_t ntp_failed_handler(alarm_id_t id, void *user_data);
+//static int64_t ntp_failed_handler(alarm_id_t id, void *user_data);
 
 // Make an NTP request
 static void ntp_request(NTP_T *state) {
@@ -72,13 +72,13 @@ static void ntp_request(NTP_T *state) {
     pbuf_free(p);
 }
 
-static int64_t ntp_failed_handler(alarm_id_t id, void *user_data)
+/*static int64_t ntp_failed_handler(alarm_id_t id, void *user_data)
 {
     NTP_T* state = (NTP_T*)user_data;
     free(state);
     error("ntp request failed");
     return 0;
-}
+}*/
 
 // Call back with a DNS result
 static void ntp_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg) {
@@ -124,7 +124,7 @@ static NTP_T* ntp_init(void) {
 }
 
 void cmd_ntp(unsigned char *tp){
-            getargs(&tp,5,",");
+            getargs(&tp,5,(unsigned char *)",");
             NTP_T *state = ntp_init();
             int timeout=5000;
             if (!state) error("Can't create NTP structure");
@@ -135,10 +135,10 @@ void cmd_ntp(unsigned char *tp){
                 if (adjust < -12.0 || adjust > 14.0) error("Invalid Time Offset");
                 timeadjust=(time_t)(adjust*3600.0);
             } else timeadjust=0;
-            if(argc>=3 && *argv[2])strcpy(IP,getCstring(argv[2]));
+            if(argc>=3 && *argv[2])strcpy(IP,(char *)getCstring(argv[2]));
             else strcpy(IP,NTP_SERVER);
             if(argc==5)timeout=getint(argv[4],0,100000);
-            if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
+            if(!isalpha((uint8_t)*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
                     if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
                     state->ntp_server_address=remote_addr;
             } else {
@@ -159,15 +159,14 @@ void cmd_ntp(unsigned char *tp){
             if (!state->ntp_pcb) {
                 free((void *)state);
                 error("failed to create pcb\n");
-            }
-            udp_recv(state->ntp_pcb, ntp_recv, state);
+            } else udp_recv(state->ntp_pcb, ntp_recv, state);
             ntp_request(state);
             Timer4=timeout;
             while(!state->complete){
                 ProcessWeb();
                 if(!Timer4){
                         udp_remove(NTPstate->ntp_pcb);
-                        memset(NTPstate,0,sizeof(NTPstate));
+//                        memset(NTPstate,0,sizeof(NTPstate));
                         free(NTPstate);
                         error("NTP timeout");
                 }
@@ -181,5 +180,4 @@ void cmd_ntp(unsigned char *tp){
             udp_remove(NTPstate->ntp_pcb);
 //            memset(NTPstate,0,sizeof(NTPstate));
             free(NTPstate);
-
 }

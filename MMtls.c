@@ -29,7 +29,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
                                  "Connection: close\r\n" \
                                  "\r\n"*/
 #define TLS_CLIENT_TIMEOUT_SECS  60
-#define DEBUG_printf 
+#define DEBUG_printf
 
 typedef struct TLS_CLIENT_T_ {
     struct altcp_pcb *pcb;
@@ -57,7 +57,7 @@ static err_t tls_client_close(void *arg) {
         altcp_err(state->pcb, NULL);
         err = altcp_close(state->pcb);
         if (err != ERR_OK) {
-            DEBUG_printf("close failed %d, calling abort\n", err);
+//            DEBUG_printf("close failed %d, calling abort\n", err);
             altcp_abort(state->pcb);
             err = ERR_ABRT;
         }
@@ -70,10 +70,10 @@ static err_t tls_client_close(void *arg) {
 static err_t tls_client_connected(void *arg, struct altcp_pcb *pcb, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
     if (err != ERR_OK) {
-        DEBUG_printf("connect failed %d\n", err);
+//        DEBUG_printf("connect failed %d\n", err);
         return tls_client_close(state);
     }
-    DEBUG_printf("connected to server\n");
+//    DEBUG_printf("connected to server\n");
 /*    printf("connected to server, sending request\n");
     err = altcp_write(state->pcb, TLS_CLIENT_HTTP_REQUEST, strlen(TLS_CLIENT_HTTP_REQUEST), TCP_WRITE_FLAG_COPY);
     if (err != ERR_OK) {
@@ -85,20 +85,20 @@ static err_t tls_client_connected(void *arg, struct altcp_pcb *pcb, err_t err) {
 }
 
 static err_t tls_client_poll(void *arg, struct altcp_pcb *pcb) {
-    DEBUG_printf("timed out");
+///    DEBUG_printf("timed out");
     return tls_client_close(arg);
 }
 
 static void tls_client_err(void *arg, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
-    DEBUG_printf("tls_client_err %d\n", err);
+//    DEBUG_printf("tls_client_err %d\n", err);
     state->pcb = NULL; /* pcb freed by lwip when _err function is called */
 }
 
 static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, err_t err) {
     TLS_CLIENT_T *state = (TLS_CLIENT_T*)arg;
     if (!p) {
-        DEBUG_printf("connection closed\n");
+//        DEBUG_printf("connection closed\n");
         return tls_client_close(state);
     }
 
@@ -107,7 +107,7 @@ static err_t tls_client_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, e
            and copies all the data to it in one go.
            Do be aware that the amount of data can potentially be a bit large (TLS record size can be 16 KB),
            so you may want to use a smaller fixed size buffer and copy the data to it using a loop, if memory is a concern */
-        DEBUG_printf("recv %d err %d\r\n", p->tot_len, err);
+//        DEBUG_printf("recv %d err %d\r\n", p->tot_len, err);
         // Receive the buffer
         const uint16_t buffer_left = state->BUF_SIZE - state->buffer_len;
         state->buffer_len += pbuf_copy_partial(p, state->buffer + state->buffer_len,
@@ -127,11 +127,11 @@ static void tls_client_connect_to_server_ip(const ip_addr_t *ipaddr, TLS_CLIENT_
     err_t err;
     u16_t port = state->port;
 
-    DEBUG_printf("connecting to server IP %s port %d\n", ipaddr_ntoa(ipaddr), port);
+//    DEBUG_printf("connecting to server IP %s port %d\n", ipaddr_ntoa(ipaddr), port);
     err = altcp_connect(state->pcb, ipaddr, port, tls_client_connected);
     if (err != ERR_OK)
     {
-        DEBUG_printf(stderr, "error initiating connect, err=%d\n", err);
+//        DEBUG_printf(stderr, "error initiating connect, err=%d\n", err);
         tls_client_close(state);
     }
 }
@@ -140,12 +140,12 @@ static void tls_client_dns_found(const char* hostname, const ip_addr_t *ipaddr, 
 {
     if (ipaddr)
     {
-        DEBUG_printf("DNS resolving complete\n");
+//        DEBUG_printf("DNS resolving complete\n");
         tls_client_connect_to_server_ip(ipaddr, (TLS_CLIENT_T *) arg);
     }
     else
     {
-        DEBUG_printf("error resolving hostname %s\n", hostname);
+//        DEBUG_printf("error resolving hostname %s\n", hostname);
         tls_client_close(arg);
     }
 }
@@ -170,7 +170,7 @@ static bool tls_client_open(const char *hostname, void *arg) {
     /* Set SNI */
     mbedtls_ssl_set_hostname(altcp_tls_context(state->pcb), hostname);
 
-    DEBUG_printf("resolving %s\n", hostname);
+//    DEBUG_printf("resolving %s\n", hostname);
 
     // cyw43_arch_lwip_begin/end should be used around calls into lwIP to ensure correct locking.
     // You can omit them if you are in a callback from lwIP. Note that when using pico_cyw_arch_poll
@@ -186,7 +186,7 @@ static bool tls_client_open(const char *hostname, void *arg) {
     }
     else if (err != ERR_INPROGRESS)
     {
-        DEBUG_printf("error initiating DNS resolving, err=%d\n", err);
+//        DEBUG_printf("error initiating DNS resolving, err=%d\n", err);
         tls_client_close(state->pcb);
     }
 
@@ -227,13 +227,13 @@ static TLS_CLIENT_T* tls_client_init(void) {
 }*/
 
 int cmd_tls() {
-    unsigned char *tp = checkstring(cmdline, "OPEN TLS CLIENT");
+    unsigned char *tp = checkstring(cmdline, (unsigned char *)"OPEN TLS CLIENT");
     if(tp) {
            int timeout=5000;
-            getargs(&tp,5,",");
+            getargs(&tp,5,(unsigned char *)",");
             if(argc<3)error("Syntax");
             TLS_CLIENT_T *state = tls_client_init();
-            strcpy(state->TLS_CLIENT_SERVER,getCstring(argv[0]));
+            strcpy(state->TLS_CLIENT_SERVER,(char *)getCstring(argv[0]));
             state->port=getint(argv[2],1,65535);
             TLS_CLIENT=state;
             if(argc==5)timeout=getint(argv[4],1,100000);
@@ -250,20 +250,21 @@ int cmd_tls() {
             }
         return 1;
     }
-    tp=checkstring(cmdline, "TLS CLIENT REQUEST");
+    
+    tp=checkstring(cmdline, (unsigned char *)"TLS CLIENT REQUEST");
     if(tp){
             void *ptr1 = NULL;
             int64_t *dest=NULL;
             uint8_t *q=NULL;
-            int size, timeout=5000;
+            int size=0, timeout=5000;
             int header=1;
             TLS_CLIENT_T *state = TLS_CLIENT;
-            getargs(&tp,7,",");
+            getargs(&tp,7,(unsigned char *)",");
             if(!state)error("No connection");
             if(!state->complete)error("Open failed to complete");
             if(argc<3)error("Syntax");
             char *request=GetTempMemory(STRINGSIZE*2);
-            strcpy(request,getCstring(argv[0]));
+            strcpy(request,(char *)getCstring(argv[0]));
             if(argc==7)header=getint(argv[6],0,1);
             if(header){
                 if(request[strlen(request)-2]==10)request[strlen(request)-2]=0;
@@ -297,9 +298,9 @@ int cmd_tls() {
             Timer4=timeout;
             while(!state->buffer_len && Timer4)ProcessWeb();
             if(!Timer4)error("No response from server");
-            return 1;
+            return 1; 
     }
-    tp=checkstring(cmdline, "CLOSE TLS CLIENT");
+    tp=checkstring(cmdline, (unsigned char *)"CLOSE TLS CLIENT");
     if(tp){
             TLS_CLIENT_T *state = TLS_CLIENT;
             if(!state)error("No connection");

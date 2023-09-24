@@ -25,7 +25,6 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #include "MMBasic_Includes.h"
 #include "Hardware_Includes.h"
 #define DEBUG_printf
-
 static char Telnetbuff[256]={0};
 static int Telnetpos=0;
 static const uint8_t telnet_init_options[] =
@@ -77,7 +76,7 @@ void __not_in_flash_func(TelnetPutC)(int c,int flush){
         if(Telnetpos>=sizeof(Telnetbuff-4) || (flush==-1 && Telnetpos)){
                 int pcb=state->telnet_pcb_no;
                 state->to_send[pcb]=Telnetpos;
-                state->buffer_sent[state->telnet_pcb_no]=Telnetbuff;
+                state->buffer_sent[state->telnet_pcb_no]=(uint8_t *)Telnetbuff;
                 if(state->client_pcb[pcb]){
 //                        cyw43_arch_lwip_check();
                         tcp_server_send_data(state, state->client_pcb[pcb], pcb);
@@ -87,8 +86,8 @@ void __not_in_flash_func(TelnetPutC)(int c,int flush){
 }
 err_t tcp_telnet_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
         static int lastchar=-1;
-        TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-        int pcb=state->telnet_pcb_no;
+//        TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
+//        int pcb=state->telnet_pcb_no;
         if (!p) {
                 return ERR_OK;
         }
@@ -96,8 +95,8 @@ err_t tcp_telnet_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
         if (p->tot_len > 0) {
                 tcp_recved(tpcb, p->tot_len);
                 if(((char *)p->payload)[0]==255){
-                        for(int i=0;i<p->tot_len;i++)DEBUG_printf("%d,",((char *)p->payload)[i]);
-                        DEBUG_printf("\r\n");
+//                        for(int i=0;i<p->tot_len;i++)DEBUG_printf("%d,",((char *)p->payload)[i]);
+//                        DEBUG_printf("\r\n");
                 } else {
                         for(int j=0;j<p->tot_len;j++){
                                 ConsoleRxBuf[ConsoleRxBufHead] = ((char *)p->payload)[j];
@@ -128,8 +127,8 @@ err_t tcp_telnet_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
 void tcp_telnet_err(void *arg, err_t err) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
 //    if (err != ERR_ABRT) {
-        char buff[STRINGSIZE]={0};
-        DEBUG_printf("Telnet disconnected %d\r\n", err);
+//        char buff[STRINGSIZE]={0};
+//        DEBUG_printf("Telnet disconnected %d\r\n", err);
         tcp_server_close(arg,state->telnet_pcb_no);
         state->telnet_pcb_no=99;
 //        if(!CurrentLinePtr) longjmp(mark, 1);  
@@ -150,14 +149,14 @@ void tcp_telnet_err(void *arg, err_t err) {
 
 void starttelnet(struct tcp_pcb *client_pcb, int pcb, void *arg){
         TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-        DEBUG_printf("Telnet Client connected %x on pcb %d\r\n",(uint32_t)client_pcb,pcb);        tcp_arg(client_pcb, state);
+//        DEBUG_printf("Telnet Client connected %x on pcb %d\r\n",(uint32_t)client_pcb,pcb);        tcp_arg(client_pcb, state);
         tcp_sent(client_pcb, tcp_telnet_sent);
         tcp_recv(client_pcb, tcp_telnet_recv);
         tcp_err(client_pcb, tcp_telnet_err);
         state->telnet_pcb_no=pcb;
         state->keepalive[pcb]=1;
         err_t err = tcp_write(client_pcb, telnet_init_options, sizeof(telnet_init_options),  0);
-        if (err != ERR_OK) {
+        if (err != ERR_OK) { 
                 tcp_server_close(state,pcb);
         }
 

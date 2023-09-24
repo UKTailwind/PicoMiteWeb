@@ -54,6 +54,14 @@ add_executable(PicoMiteWeb
     MMudp.c
 )
 set_source_files_properties(mmc_stm32.c PROPERTIES COMPILE_FLAGS -O3)
+set_source_files_properties(ff.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(GUI.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(BmpDecoder.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(picojpeg.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(regex.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(hxcmod.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(MMtls.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(cJSON.c PROPERTIES COMPILE_FLAGS -Os)
 target_include_directories(PicoMiteWeb PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/.. # for our common lwipopts
@@ -72,9 +80,10 @@ target_compile_options(PicoMiteWeb PRIVATE  -DPICOMITEWEB
 											-DPICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=0 
 											-DPICO_STACK_SIZE=0x1800 
 											-DPICO_CORE1_STACK_SIZE=0x0 
-											-DPICO_HEAP_SIZE=0x9000 
+											-DPICO_HEAP_SIZE=0x9010 
 											-DPICO_CYW43_ARCH_POLL 
 											-DCYW43_HOST_NAME="WebMite" 
+                                            -Wall
 											-O2)
 target_link_libraries(PicoMiteWeb
     pico_stdlib

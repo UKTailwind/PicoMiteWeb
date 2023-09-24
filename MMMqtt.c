@@ -46,10 +46,9 @@ enum {
   MQTT_CONNECTED
 };
 
-static ip_addr_t mqtt_ip LWIP_MQTT_EXAMPLE_IPADDR_INIT;
+//static ip_addr_t mqtt_ip LWIP_MQTT_EXAMPLE_IPADDR_INIT;
 
 static mqtt_client_t* mqtt_client=NULL;
-
 
 typedef struct mqtt_dns_t_ {
         ip_addr_t remote;
@@ -57,7 +56,7 @@ typedef struct mqtt_dns_t_ {
 } mqtt_dns_t;
 
 mqtt_dns_t mqtt_dns = {
-        0,
+        {0},
         0
 }; 
 typedef struct mqtt_subs_t_ {
@@ -100,9 +99,9 @@ mqtt_incoming_data_cb(void *arg, const u8_t *data, u16_t len, u8_t flags)
 {
     void *v;
     int mylen=len;
-    if(mylen>255)mylen==255;
-    v = findvar("MM.MESSAGE$", T_STR | V_NOFIND_NULL);    // create the variable
-    if(v==NULL)findvar("MM.MESSAGE$", V_FIND | V_DIM_VAR | T_CONST);
+    if(mylen>255)mylen=255;
+    v = findvar((unsigned char *)"MM.MESSAGE$", T_STR | V_NOFIND_NULL);    // create the variable
+    if(v==NULL)findvar((unsigned char *)"MM.MESSAGE$", V_FIND | V_DIM_VAR | T_CONST);
     u8_t *p=(u8_t *)v;
     memcpy(&p[1],data,mylen);
     p[0]=mylen;
@@ -114,9 +113,9 @@ mqtt_incoming_publish_cb(void *arg, const char *topic, u32_t tot_len)
 {
     void *v;
     int mylen=strlen(topic);
-    if(mylen>255)mylen==255;
-    v = findvar("MM.TOPIC$", T_STR | V_NOFIND_NULL);    // create the variable
-    if(v==NULL)findvar("MM.TOPIC$", V_FIND | V_DIM_VAR | T_CONST);
+    if(mylen>255)mylen=255;
+    v = findvar((unsigned char *)"MM.TOPIC$", T_STR | V_NOFIND_NULL);    // create the variable
+    if(v==NULL)findvar((unsigned char *)"MM.TOPIC$", V_FIND | V_DIM_VAR | T_CONST);
     u8_t *p=(u8_t *)v;
     memcpy(&p[1],topic,mylen);
     p[0]=mylen;
@@ -138,25 +137,25 @@ mqtt_unsubmessage_cb(void *arg, err_t err)
 static void
 mqtt_request_cb(void *arg, err_t err)
 {
-  const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
+//  const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
 
-  LWIP_PLATFORM_DIAG(("MQTT client \"%s\" request cb: err %d\n", client_info->client_id, (int)err));
+//  LWIP_PLATFORM_DIAG(("MQTT client \"%s\" request cb: err %d\n", client_info->client_id, (int)err));
 }
 
 static void
 mqtt_connection_cb(mqtt_client_t *client, void *arg, mqtt_connection_status_t status)
 {
-  const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
-  LWIP_UNUSED_ARG(client);
+//  const struct mqtt_connect_client_info_t* client_info = (const struct mqtt_connect_client_info_t*)arg;
+//  LWIP_UNUSED_ARG(client);
 
-  LWIP_PLATFORM_DIAG(("MQTT client \"%s\" mqtt connection cb: status %d\n", client_info->client_id, (int)status));
+//  LWIP_PLATFORM_DIAG(("MQTT client \"%s\" mqtt connection cb: status %d\n", client_info->client_id, (int)status));
 }
 #endif /* LWIP_TCP */
 void
 mqtt_example_init(ip_addr_t *mqtt_ip, int port)
 {
 #if LWIP_TCP
-mqtt_connection_status_t status;
+//mqtt_connection_status_t status;
   mqtt_client = mqtt_client_new();
   mqtt_client->keep_alive=100;
     if(!optionsuppressstatus)printf("Connecting to %s port %u\r\n", ip4addr_ntoa(mqtt_ip), port);
@@ -187,25 +186,25 @@ void closeMQTT(void){
 static struct altcp_tls_config *tls_config = NULL;
 
 int cmd_mqtt(void){
-    unsigned char *tp=checkstring(cmdline,"MQTT CONNECT");
+    unsigned char *tp=checkstring(cmdline,(unsigned char *)"MQTT CONNECT");
     if(tp){
-        getargs(&tp,9,",");
+        getargs(&tp,9,(unsigned char *)",");
         char *IP=GetTempMemory(STRINGSIZE);
         char *ID=GetTempMemory(STRINGSIZE);
         if(mqtt_client)error("Already connected");
         int timeout=5000;
         if(!(argc==7 || argc==9))error("Syntax");
-        IP=getCstring(argv[0]);
+        IP=(char *)getCstring(argv[0]);
         int port=getint(argv[2],1,65535);
         ip4_addr_t remote_addr;
         if(port==8883){
           tls_config = altcp_tls_create_config_client(NULL, 0);
           mqtt_client_info.tls_config=tls_config;
         }
-        mqtt_client_info.client_user=getCstring(argv[4]);
-        mqtt_client_info.client_pass=getCstring(argv[6]);
+        mqtt_client_info.client_user=(char *)getCstring(argv[4]);
+        mqtt_client_info.client_pass=(char *)getCstring(argv[6]);
         if(argc==9){
-          MQTTInterrupt=GetIntAddress(argv[8]);
+          MQTTInterrupt=(char *)GetIntAddress(argv[8]);
           InterruptUsed=true;
         }
         else MQTTInterrupt=NULL;
@@ -215,7 +214,7 @@ int cmd_mqtt(void){
         IntToStr(&ID[strlen(ID)],time_us_64(),16);
         mqtt_client_info.client_id=ID;
 
-        if(!isalpha(*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
+        if(!isalpha((uint8_t)*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
                 if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
                 mqtt_dns.remote=remote_addr;
         } else {
@@ -228,24 +227,24 @@ int cmd_mqtt(void){
         mqtt_example_init(&mqtt_dns.remote,port);
         return 1;
     }
-    tp=checkstring(cmdline,"MQTT PUBLISH");
+    tp=checkstring(cmdline,(unsigned char *)"MQTT PUBLISH");
     if(tp){
-        getargs(&tp,7,",");
+        getargs(&tp,7,(unsigned char *)",");
         int qos=1;
         int retain=1;
         if(argc<3)error("Syntax");
-        char *topic=getCstring(argv[0]);
-        char *msg=getCstring(argv[2]);
+        char *topic=(char *)getCstring(argv[0]);
+        char *msg=(char *)getCstring(argv[2]);
         if(argc>=5 && *argv[4])qos=getint(argv[4],0,2);
         if(argc==7)retain=getint(argv[6],0,1);
         mqtt_publish(mqtt_client, topic, msg, strlen(msg), qos, retain, mqtt_request_cb , (void *)&mqtt_client_info);
       return 1;
     }
-    tp=checkstring(cmdline,"MQTT SUBSCRIBE");
+    tp=checkstring(cmdline,(unsigned char *)"MQTT SUBSCRIBE");
     if(tp){
-      getargs(&tp,3,",");
+      getargs(&tp,3,(unsigned char *)",");
       if(!(argc>=1))error("Syntax");
-      strcpy(mqtt_subs.topic,getCstring(argv[0]));
+      strcpy(mqtt_subs.topic,(char *)getCstring(argv[0]));
       int qos=0;
       if(argc==3)qos=getint(argv[2],0,2);
       mqtt_subs.complete=0;
@@ -255,9 +254,9 @@ int cmd_mqtt(void){
       if(Timer4==0)error("Failed to subscribe to $",mqtt_subs.topic);
       return 1;
     }
-    tp=checkstring(cmdline,"MQTT UNSUBSCRIBE");
+    tp=checkstring(cmdline,(unsigned char *)"MQTT UNSUBSCRIBE");
     if(tp){
-      strcpy(mqtt_subs.topic,getCstring(tp));
+      strcpy(mqtt_subs.topic,(char *)getCstring(tp));
       mqtt_subs.complete=0;
       Timer4=4000;
       mqtt_sub_unsub(mqtt_client, mqtt_subs.topic, 0, mqtt_unsubmessage_cb, &mqtt_subs, 0);
@@ -265,7 +264,7 @@ int cmd_mqtt(void){
       if(Timer4==0)error("Failed to unsubscribe to $",mqtt_subs.topic);
       return 1;
     }
-    tp=checkstring(cmdline,"MQTT CLOSE");
+    tp=checkstring(cmdline,(unsigned char *)"MQTT CLOSE");
     if(tp){
       if(!mqtt_client)return 1;
       closeMQTT();

@@ -38,7 +38,7 @@ static TCP_SERVER_T* tcp_server_init(void) {
         memset(TCPstate,0,sizeof(TCP_SERVER_T));
     }
     if (!TCPstate) {
-        DEBUG_printf("failed to allocate state\r\n");
+//        DEBUG_printf("failed to allocate state\r\n");
         return NULL;
     }
     for(int i=0;i<MaxPcb;i++){
@@ -47,7 +47,6 @@ static TCP_SERVER_T* tcp_server_init(void) {
     TCPstate->telnet_pcb_no=99;
     return TCPstate;
 }
-
 err_t tcp_server_close(void *arg, int pcb) {
     if(pcb==99)return ERR_OK;
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
@@ -64,7 +63,7 @@ err_t tcp_server_close(void *arg, int pcb) {
             error("close failed %, calling abort", err);
             err = ERR_ABRT;
         }
-        DEBUG_printf("Close success %u on pcb %x\r\n",state->client_pcb[pcb],pcb);
+//        DEBUG_printf("Close success %u on pcb %x\r\n",state->client_pcb[pcb],pcb);
         state->recv_len[pcb]=0;
         state->client_pcb[pcb]=NULL;
         FreeMemorySafe((void **)&state->buffer_recv[pcb]);
@@ -78,47 +77,47 @@ static err_t tcp_server_result(void *arg, int status) {
 
 static err_t tcp_server_sent(void *arg, struct tcp_pcb *tpcb, u16_t len, int pcb) {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-    DEBUG_printf("tcp_server_sent %u\r\n", len);
+//    DEBUG_printf("tcp_server_sent %u\r\n", len);
     state->pcbopentime[pcb]=time_us_64();
     state->sent_len[pcb] += len;
     return ERR_OK;
 }
 static err_t tcp_server_sent0(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-        tcp_server_sent(arg, tpcb, len, 0);
+        return tcp_server_sent(arg, tpcb, len, 0);
 }
 static err_t tcp_server_sent1(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-        tcp_server_sent(arg, tpcb, len, 1);
+        return tcp_server_sent(arg, tpcb, len, 1);
 }
 static err_t tcp_server_sent2(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-        tcp_server_sent(arg, tpcb, len, 2);
+        return tcp_server_sent(arg, tpcb, len, 2);
 }
 static err_t tcp_server_sent3(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-        tcp_server_sent(arg, tpcb, len, 3);
+        return tcp_server_sent(arg, tpcb, len, 3);
 }
 static err_t tcp_server_sent4(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-        tcp_server_sent(arg, tpcb, len, 4);
+        return tcp_server_sent(arg, tpcb, len, 4);
 }
 static err_t tcp_server_sent5(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-        tcp_server_sent(arg, tpcb, len, 5);
+        return tcp_server_sent(arg, tpcb, len, 5);
 }
 static err_t tcp_server_sent6(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-        tcp_server_sent(arg, tpcb, len, 6);
+        return tcp_server_sent(arg, tpcb, len, 6);
 }
 static err_t tcp_server_sent7(void *arg, struct tcp_pcb *tpcb, u16_t len) {
-        tcp_server_sent(arg, tpcb, len, 7);
+        return tcp_server_sent(arg, tpcb, len, 7);
 }
 err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb, int pcb)
 {
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
 
 //    state->sent_len[pcb] = 0;
-    if(pcb!=state->telnet_pcb_no)DEBUG_printf("Writing %d bytes to client %x\r\n",state->to_send[pcb], (uint32_t)tpcb);
+//    if(pcb!=state->telnet_pcb_no)DEBUG_printf("Writing %d bytes to client %x\r\n",state->to_send[pcb], (uint32_t)tpcb);
     // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
     // can use this method to cause an assertion in debug mode, if this method is called when
     // cyw43_arch_lwip_begin IS needed
     int t;
     while((t=tcp_sndqueuelen(tpcb))>6){
-        DEBUG_printf("Send queue %u\r\n", t);
+//        DEBUG_printf("Send queue %u\r\n", t);
         cyw43_arch_poll();
     }
     state->pcbopentime[pcb]=time_us_64();
@@ -129,7 +128,7 @@ err_t tcp_server_send_data(void *arg, struct tcp_pcb *tpcb, int pcb)
     return ERR_OK;
 }
 err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err, int pcb) {
-        static int count=0;
+//        static int count=0;
         TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
         if (!p) {
                 return ERR_OK;
@@ -142,10 +141,10 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
                 TCPreceived=1;
     	        if(!CurrentLinePtr){  // deal with requests when we don't want them
                         tcp_recved(tpcb, p->tot_len);
-                        DEBUG_printf("Sending 404 on pcb %d, rbuff address is %x ",pcb, (uint32_t)state->buffer_recv[pcb]);
+//                        DEBUG_printf("Sending 404 on pcb %d, rbuff address is %x ",pcb, (uint32_t)state->buffer_recv[pcb]);
                         state->sent_len[pcb]=0;
                         state->to_send[pcb]= state->total_sent[pcb] = strlen(httpheadersfail);
-                        state->buffer_sent[pcb]=(char *)httpheadersfail;
+                        state->buffer_sent[pcb]=(unsigned char *)httpheadersfail;
                         if(state->client_pcb[pcb]){
                                 tcp_server_send_data(state, state->client_pcb[pcb],pcb);
                                 checksent(state,0, pcb);
@@ -154,45 +153,45 @@ err_t tcp_server_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
                 } else {
                         state->buffer_recv[pcb]=GetMemory(p->tot_len);
                         state->inttrig[pcb]=1;
-                        DEBUG_printf("Tcp_HTTP_recv on pcb %d / %d\r\n",pcb, p->tot_len);
+//                        DEBUG_printf("Tcp_HTTP_recv on pcb %d / %d\r\n",pcb, p->tot_len);
                         state->recv_len[pcb] = pbuf_copy_partial(p, state->buffer_recv[pcb] , p->tot_len, 0);
                         tcp_recved(tpcb, p->tot_len);
                         state->pcbopentime[pcb]=time_us_64();
                 }
         }
-        DEBUG_printf("Stack pointer is %x free space on heap %u\r\n",((uint32_t)__get_MSP()),getFreeHeap());
+//        DEBUG_printf("Stack pointer is %x free space on heap %u\r\n",((uint32_t)__get_MSP()),getFreeHeap());
         pbuf_free(p);
         return ERR_OK;
 }
 
 err_t tcp_server_recv0(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-        tcp_server_recv(arg, tpcb, p, err,0);
+        return tcp_server_recv(arg, tpcb, p, err,0);
 }
 err_t tcp_server_recv1(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-        tcp_server_recv(arg, tpcb, p, err,1);
+        return tcp_server_recv(arg, tpcb, p, err,1);
 }
 err_t tcp_server_recv2(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-        tcp_server_recv(arg, tpcb, p, err,2);
+        return tcp_server_recv(arg, tpcb, p, err,2);
 }
 err_t tcp_server_recv3(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-        tcp_server_recv(arg, tpcb, p, err,3);
+        return tcp_server_recv(arg, tpcb, p, err,3);
 }
 err_t tcp_server_recv4(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-        tcp_server_recv(arg, tpcb, p, err,4);
+        return tcp_server_recv(arg, tpcb, p, err,4);
 }
 err_t tcp_server_recv5(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-        tcp_server_recv(arg, tpcb, p, err,5);
+        return tcp_server_recv(arg, tpcb, p, err,5);
 }
 err_t tcp_server_recv6(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-        tcp_server_recv(arg, tpcb, p, err,6);
+        return tcp_server_recv(arg, tpcb, p, err,6);
 }
 err_t tcp_server_recv7(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
-        tcp_server_recv(arg, tpcb, p, err,7);
+        return tcp_server_recv(arg, tpcb, p, err,7);
 }
 
 static void tcp_server_err(void *arg, err_t err, int pcb) {
     if (err != ERR_ABRT) {
-        DEBUG_printf("tcp_client_err_fn %d\r\n", err);
+//        DEBUG_printf("tcp_client_err_fn %d\r\n", err);
         tcp_server_close(arg, pcb);
     }
 }
@@ -225,7 +224,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
     TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
     int pcb;
     if (err != ERR_OK || client_pcb == NULL) {
-        DEBUG_printf("Failure in accept\r\n");
+//        DEBUG_printf("Failure in accept\r\n");
         tcp_server_result(arg, err);
         return ERR_VAL;
     }
@@ -241,7 +240,7 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
         starttelnet(client_pcb, pcb, arg) ;
         return ERR_OK;
     } else if(client_pcb->local_port==TCP_PORT && TCP_PORT){
-        DEBUG_printf("HTTP Client connected %x on pcb %d\r\n",(uint32_t)client_pcb,pcb);        tcp_arg(client_pcb, state);
+//        DEBUG_printf("HTTP Client connected %x on pcb %d\r\n",(uint32_t)client_pcb,pcb);        tcp_arg(client_pcb, state);
         state->keepalive[pcb]=0;
         tcp_arg(client_pcb, state);
         switch(pcb){
@@ -294,16 +293,16 @@ static err_t tcp_server_accept(void *arg, struct tcp_pcb *client_pcb, err_t err)
                 t++;
         } else {
                 if(time_us_64()-state->pcbopentime[i] > 1000*(uint32_t)Option.ServerResponceTime && !state->keepalive[i]){
-                        DEBUG_printf("Warning PCB %d still open\r\n", i);
+//                        DEBUG_printf("Warning PCB %d still open\r\n", i);
                         if(state->buffer_recv[i]){
                                 tcp_server_close(state,i);
-                                error("No response to request from connection no. %",i);
+                                error("No response to request from connection no. %",i+1);
                         }
                         tcp_server_close(state,i);
                 }
         }
     }
-    DEBUG_printf("Connection still free %u\r\n", t);
+//    DEBUG_printf("Connection still free %u\r\n", t);
 
     return ERR_OK;
 }
@@ -319,7 +318,7 @@ static bool tcp_server_open(void *arg) {
     struct tcp_pcb *httppcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
     struct tcp_pcb *telnet_pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
     if (!httppcb || !telnet_pcb) {
-        DEBUG_printf("failed to create pcbs\r\n");
+//        DEBUG_printf("failed to create pcbs\r\n");
         return false;
     }
     err_t err;
@@ -328,12 +327,12 @@ static bool tcp_server_open(void *arg) {
         if (err) {
                 char buff[STRINGSIZE]={0};
                 sprintf(buff,"failed to bind to port %d\n",TCP_PORT);
-                MMPrintString(buff);
+                if(!optionsuppressstatus)MMPrintString(buff);
                 return false;
         }
         state->server_pcb = tcp_listen_with_backlog(httppcb, MaxPcb);
         if (!state->server_pcb) {
-                DEBUG_printf("failed to listen\r\n");
+//                DEBUG_printf("failed to listen\r\n");
                 if (httppcb) {
                 tcp_close(httppcb);
                 }
@@ -352,7 +351,7 @@ static bool tcp_server_open(void *arg) {
         }
         state->telnet_pcb = tcp_listen_with_backlog(telnet_pcb, MaxPcb);
         if (!state->telnet_pcb) {
-                DEBUG_printf("failed to listen\r\n");
+//                DEBUG_printf("failed to listen\r\n");
                 if (telnet_pcb) {
                 tcp_close(telnet_pcb);
                 }
@@ -393,9 +392,9 @@ void cleanserver(void){
 void cmd_transmit(unsigned char *cmd){
     unsigned char *tp;
     int tlen;
-    tp=checkstring(cmd, "CODE");
+    tp=checkstring(cmd, (unsigned char *)"CODE");
     if(tp){
-    	getargs(&tp, 3, ",");
+    	getargs(&tp, 3, (unsigned char *)",");
         if(argc != 3)error("Argument count");
         TCP_SERVER_T *state = (TCP_SERVER_T*)TCPstate;
         char httpheaders[]="HTTP/1.0 404\r\n\r\n";
@@ -405,7 +404,7 @@ void cmd_transmit(unsigned char *cmd){
         httpheaders[12]='\r';
         state->to_send[pcb]=strlen(httpheaders);
         state->sent_len[pcb]=0;
-        state->buffer_sent[pcb]=httpheaders;
+        state->buffer_sent[pcb]=(unsigned char *)httpheaders;
         state->total_sent[pcb]=strlen(httpheaders);
         if(setjmp(recover) != 0)error("Transmit failed");
         if(state->client_pcb[pcb]){
@@ -417,19 +416,20 @@ void cmd_transmit(unsigned char *cmd){
         return;
     } 
 
-    if((tp=checkstring(cmd, "FILE"))){
+    if((tp=checkstring(cmd, (unsigned char *)"FILE"))){
         int32_t fn;
         char *fname;
         char *ctype;
         char *outstr=GetTempMemory(STRINGSIZE);
         char p[10]={0};
-        int FileSize, n_read;
-    	getargs(&tp, 5, ",");
+        int FileSize; 
+        UINT n_read;
+    	getargs(&tp, 5, (unsigned char *)",");
         if(argc != 5)error("Argument count");
         TCP_SERVER_T *state = (TCP_SERVER_T*)TCPstate;
         int pcb = getint(argv[0],1,MaxPcb)-1;
-        fname=getCstring(argv[2]);
-        ctype=getCstring(argv[4]);
+        fname=(char *)getCstring(argv[2]);
+        ctype=(char *)getCstring(argv[4]);
         strcpy(outstr,httpheaders);
         strcat(outstr,ctype);
         strcat(outstr,httptail);
@@ -443,30 +443,30 @@ void cmd_transmit(unsigned char *cmd){
                 IntToStr(p,FileSize,10);
                 strcat(outstr,p);
                 strcat(outstr,httpend);
-                int i=0;
+//                int i=0;
                 state->sent_len[pcb]=0;
                 state->to_send[pcb]= state->total_sent[pcb] = strlen(outstr);
-                state->buffer_sent[pcb]=outstr;
+                state->buffer_sent[pcb]=(unsigned char *)outstr;
                 if(setjmp(recover) != 0)error("Transmit failed");
-                DEBUG_printf("sending file header to pcb %d\r\n",pcb);
+//                DEBUG_printf("sending file header to pcb %d\r\n",pcb);
                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
                 if(FileSize<TCP_MSS*4 && FileSize<FreeSpaceOnHeap()/4){
                         char *pBuf=GetTempMemory(FileSize);
                         if(filesource[fn]!=FLASHFILE)  f_read(FileTable[fn].fptr, pBuf, FileSize, &n_read);
                         else n_read=lfs_file_read(&lfs, FileTable[fn].lfsptr, pBuf, FileSize);
-                        state->buffer_sent[pcb]=pBuf;
+                        state->buffer_sent[pcb]=(unsigned char *)pBuf;
                         while(n_read>TCP_MSS){
                                 state->to_send[pcb]=TCP_MSS;
                                 state->total_sent[pcb]+=TCP_MSS;
                                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
-                                DEBUG_printf("sending page to pcb %d\r\n",pcb);
+//                                DEBUG_printf("sending page to pcb %d\r\n",pcb);
                                 n_read-=TCP_MSS;
                                 state->buffer_sent[pcb]+=TCP_MSS;
                         }
                         state->to_send[pcb]=n_read;
                         state->total_sent[pcb]+=n_read;
                         tcp_server_send_data(state, state->client_pcb[pcb], pcb);
-                        DEBUG_printf("sending page end to pcb %d\r\n",pcb);
+//                        DEBUG_printf("sending page end to pcb %d\r\n",pcb);
                         checksent(state,0, pcb);
                 } else {
                         char *pBuf=GetTempMemory(TCP_MSS);
@@ -478,9 +478,9 @@ void cmd_transmit(unsigned char *cmd){
                                 if(filesource[fn]!=FLASHFILE)  f_read(FileTable[fn].fptr, pBuf, TCP_MSS, &n_read);
                                 else n_read=lfs_file_read(&lfs, FileTable[fn].lfsptr, pBuf, TCP_MSS);
                                 state->to_send[pcb]=n_read;
-                                state->buffer_sent[pcb]=pBuf;
+                                state->buffer_sent[pcb]=(unsigned char *)pBuf;
                                 state->total_sent[pcb]+=n_read;
-                                DEBUG_printf("sending file content to pcb %d\r\n",pcb);
+//                                DEBUG_printf("sending file content to pcb %d\r\n",pcb);
                                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
                                 checksent(state,fn, pcb);
                                 state->total_sent[pcb]=0;
@@ -492,7 +492,7 @@ void cmd_transmit(unsigned char *cmd){
                 FileClose(fn);
         } else {
                 state->to_send[pcb]= state->total_sent[pcb] = strlen(httpheadersfail);
-                state->buffer_sent[pcb]=(char *)httpheadersfail;
+                state->buffer_sent[pcb]=(unsigned char *)httpheadersfail;
                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
                 checksent(state,0, pcb);
         }
@@ -500,22 +500,19 @@ void cmd_transmit(unsigned char *cmd){
         {if(startupcomplete)cyw43_arch_poll();}
         return;
     }
-    if((tp=checkstring(cmd, "PAGE"))){
+    if((tp=checkstring(cmd, (unsigned char *)"PAGE"))){
 	MMFLOAT f;
         int32_t fn;
         int64_t i64;
-        unsigned char *s;
-        int i;
+         int i;
         int t;
         char *fname;
         char c;
         char vartest[MAXVARLEN];
         int vartestp;
-	void *ptr = NULL;
-        int FileSize, n_read;
-        int savepointer=0;
+        int FileSize;
         char p[10]={0};
-    	getargs(&tp, 3, ",");
+    	getargs(&tp, 3, (unsigned char *)",");
         if(argc!=3)error("Argument count");
         char *outstr=GetTempMemory(STRINGSIZE);
         char *valbuf=GetTempMemory(STRINGSIZE);
@@ -523,14 +520,14 @@ void cmd_transmit(unsigned char *cmd){
         strcat(outstr,httphtml);
         TCP_SERVER_T *state = (TCP_SERVER_T*)TCPstate;
         int pcb = getint(argv[0],1,MaxPcb)-1;
-        fname=getCstring(argv[2]);
+        fname=(char *)getCstring(argv[2]);
         if(*fname == 0) error("Cannot find file");
         if (ExistsFile(fname)) {
                 fn = FindFreeFileNbr();
                 if (!BasicFileOpen(fname, fn, FA_READ)) return;
                 if(filesource[fn]!=FLASHFILE) FileSize = f_size(FileTable[fn].fptr);
                 else FileSize = lfs_file_size(&lfs,FileTable[fn].lfsptr);
-                char *SocketOut=GetMemory(FileSize+256);
+                char *SocketOut=GetMemory(FileSize+4096);
                 int SocketOutPointer=0;
                 while(1) {
                         if(FileEOF(fn)) break;
@@ -590,32 +587,32 @@ void cmd_transmit(unsigned char *cmd){
                 if(setjmp(recover) != 0)error("Transmit failed");
                 state->to_send[pcb] = state->total_sent[pcb] = strlen(outstr);
                 state->sent_len[pcb]=0;
-                state->buffer_sent[pcb]=outstr;
+                state->buffer_sent[pcb]=(unsigned char *)outstr;
                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
-                DEBUG_printf("sending page header to pcb %d\r\n",pcb);
+//                DEBUG_printf("sending page header to pcb %d\r\n",pcb);
 //
 //                state->to_send[pcb]=strlen(SocketOut);
-                state->buffer_sent[pcb]=SocketOut;
+                state->buffer_sent[pcb]=(unsigned char *)SocketOut;
                 int bufflen=strlen(SocketOut);
                 while(bufflen>TCP_MSS){
                         state->to_send[pcb]=TCP_MSS;
                         state->total_sent[pcb]+=TCP_MSS;
                         tcp_server_send_data(state, state->client_pcb[pcb], pcb);
-                        DEBUG_printf("sending page to pcb %d\r\n",pcb);
+//                        DEBUG_printf("sending page to pcb %d\r\n",pcb);
                         bufflen-=TCP_MSS;
                         state->buffer_sent[pcb]+=TCP_MSS;
                 }
                 state->to_send[pcb]=bufflen;
                 state->total_sent[pcb]+=bufflen;
                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
-                DEBUG_printf("sending page end to pcb %d\r\n",pcb);
+//                DEBUG_printf("sending page end to pcb %d\r\n",pcb);
                 checksent(state,0, pcb);
 //
-                FreeMemory(SocketOut);
+                FreeMemory((void *)SocketOut);
         } else {
                 state->to_send[pcb] = state->total_sent[pcb] = strlen(httpheadersfail);
                 state->sent_len[pcb]=0;
-                state->buffer_sent[pcb]=(char *)httpheadersfail;
+                state->buffer_sent[pcb]=(unsigned char *)httpheadersfail;
                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
                 checksent(state,0,pcb);
         }
@@ -639,39 +636,39 @@ void open_tcp_server(void){
 
 int cmd_tcpserver(void){
     unsigned char *tp;
-            tp=checkstring(cmdline, "TCP INTERRUPT");
+            tp=checkstring(cmdline, (unsigned char *)"TCP INTERRUPT");
         if(tp){
-                getargs(&tp, 1, ",");
+                getargs(&tp, 1, (unsigned char *)",");
                 if(argc!=1)error("Syntax");
-                TCPreceiveInterrupt=GetIntAddress(argv[0]);
+                TCPreceiveInterrupt= (char *)GetIntAddress(argv[0]);
                 InterruptUsed=true;
                 TCPreceived=0;
                 return 1;
         }
-        tp=checkstring(cmdline, "TCP CLOSE");
+        tp=checkstring(cmdline, (unsigned char *)"TCP CLOSE");
         if(tp){
                 TCP_SERVER_T *state = TCPstate;
-                getargs(&tp, 1, ",");
+                getargs(&tp, 1, (unsigned char *)",");
                 if(argc!=1)error("Syntax");
                 int pcb = getint(argv[0],1,MaxPcb)-1;
                 tcp_server_close(state, pcb) ;
                 return 1;
         }
-        tp=checkstring(cmdline, "TRANSMIT");
+        tp=checkstring(cmdline, (unsigned char *)"TRANSMIT");
         if(tp){
                 cmd_transmit(tp);
         
                 return 1;
         }
 
-        tp=checkstring(cmdline, "TCP READ");
+        tp=checkstring(cmdline, (unsigned char *)"TCP READ");
         if(tp){
                 void *ptr1 = NULL;
                 int64_t *dest=NULL;
                 uint8_t *q=NULL;
-                int size;
+                int size=0;
                 TCP_SERVER_T *state = TCPstate;
-                getargs(&tp, 3, ",");
+                getargs(&tp, 3, (unsigned char *)",");
                 if(argc!=3)error("Syntax");
                 int pcb=getint(argv[0],1,MaxPcb)-1;
                 ptr1 = findvar(argv[2], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
@@ -695,13 +692,13 @@ int cmd_tcpserver(void){
                 state->inttrig[pcb]=0;
                 return 1;
         }
-        tp=checkstring(cmdline, "TCP SEND");
+        tp=checkstring(cmdline, (unsigned char *)"TCP SEND");
         if(tp){
                 TCP_SERVER_T *state = (TCP_SERVER_T*)TCPstate;
                  void *ptr1 = NULL;
                 int64_t *dest=NULL;
                 uint8_t *q=NULL;
-                getargs(&tp, 3, ",");
+                getargs(&tp, 3, (unsigned char *)",");
                 if(!TCPstate)error("Server not open");
                 if(argc != 3)error("Argument count");
                 int pcb = getint(argv[0],1,MaxPcb)-1;
@@ -714,7 +711,7 @@ int cmd_tcpserver(void){
                 dest = (long long int *)ptr1;
                 q=(uint8_t *)&dest[1];
                 } else error("Argument must be integer array");
-                int j=(vartbl[VarIndex].dims[0] - OptionBase);
+//                int j=(vartbl[VarIndex].dims[0] - OptionBase);
                 state->buffer_sent[pcb]=q;
                 int bufflen=dest[0];
                 state->to_send[pcb] = state->total_sent[pcb] = state->sent_len[pcb]=0;
@@ -722,14 +719,14 @@ int cmd_tcpserver(void){
                         state->to_send[pcb]=TCP_MSS;
                         state->total_sent[pcb]+=TCP_MSS;
                         tcp_server_send_data(state, state->client_pcb[pcb], pcb);
-                        DEBUG_printf("sending page to pcb %d\r\n",pcb);
+//                        DEBUG_printf("sending page to pcb %d\r\n",pcb);
                         bufflen-=TCP_MSS;
                         state->buffer_sent[pcb]+=TCP_MSS;
                 }
                 state->to_send[pcb]=bufflen;
                 state->total_sent[pcb]+=bufflen;
                 tcp_server_send_data(state, state->client_pcb[pcb], pcb);
-                DEBUG_printf("sending page end to pcb %d\r\n",pcb);
+//                DEBUG_printf("sending page end to pcb %d\r\n",pcb);
                 checksent(state,0, pcb);
 //                tcp_server_close(state,pcb);
                 ProcessWeb();
