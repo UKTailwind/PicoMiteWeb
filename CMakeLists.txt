@@ -48,7 +48,6 @@ add_executable(PicoMiteWeb
     MMtelnet.c
     MMntp.c
     MMtcpserver.c
-    MMtls.c
     tftp.c
     MMtftp.c
     MMudp.c
@@ -78,9 +77,9 @@ target_compile_options(PicoMiteWeb PRIVATE  -DPICOMITEWEB
 	                                        -DPICO_XOSC_STARTUP_DELAY_MULTIPLIER=64 
 											-DPICO_FLASH_SIZE_BYTES=16777216 
 											-DPICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=0 
-											-DPICO_STACK_SIZE=0x1800 
+											-DPICO_STACK_SIZE=0x2000 
 											-DPICO_CORE1_STACK_SIZE=0x0 
-											-DPICO_HEAP_SIZE=0x9010 
+											-DPICO_HEAP_SIZE=0x4000 
 											-DPICO_CYW43_ARCH_POLL 
 											-DCYW43_HOST_NAME="WebMite" 
                                             -Wall
@@ -97,6 +96,4 @@ target_link_libraries(PicoMiteWeb
     hardware_exception 
 	hardware_pio
     pico_cyw43_arch_lwip_poll
-    pico_lwip_mbedtls
-    pico_mbedtls
 ) 
