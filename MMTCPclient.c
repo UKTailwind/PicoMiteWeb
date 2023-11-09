@@ -26,6 +26,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 #include "Hardware_Includes.h"
 #define DEBUG_printf
 TCP_CLIENT_T *TCP_CLIENT=NULL;
+int streampointer=0;
 // Perform initialisation
 TCP_CLIENT_T* tcp_client_init(void) {
     TCP_CLIENT_T *state = calloc(1, sizeof(TCP_CLIENT_T));
@@ -106,6 +107,25 @@ err_t tcp_client_recv(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err
     pbuf_free(p);
     return ERR_OK;
 }
+err_t tcp_client_recv_stream(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err) {
+    TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
+    if (!p) {
+        return ERR_OK;
+    }
+    // this method is callback from lwIP, so cyw43_arch_lwip_begin is not required, however you
+    // can use this method to cause an assertion in debug mode, if this method is called when
+    // cyw43_arch_lwip_begin IS needed
+    cyw43_arch_lwip_check();
+    if (p->tot_len > 0) {
+        for(int j=0;j<p->tot_len;j++){
+            state->buffer[*state->buffer_write]= ((char *)p->payload)[j];
+            *state->buffer_write = (*state->buffer_write + 1) % state->BUF_SIZE;     // advance the head of the queue
+        }
+        tcp_recved(tpcb, p->tot_len);
+    }
+    pbuf_free(p);
+    return ERR_OK;
+}
 static err_t tcp_client_connected(void *arg, struct tcp_pcb *tpcb, err_t err) {
     TCP_CLIENT_T *state = (TCP_CLIENT_T*)arg;
     if (err != ERR_OK) {
@@ -131,7 +151,8 @@ static bool tcp_client_open(void *arg) {
     tcp_arg(state->tcp_pcb, state);
 //    tcp_poll(state->tcp_pcb, tcp_client_poll, POLL_TIME_S * 2);
     tcp_sent(state->tcp_pcb, tcp_client_sent);
-    tcp_recv(state->tcp_pcb, tcp_client_recv);
+    if(state->buffer_write==NULL)tcp_recv(state->tcp_pcb, tcp_client_recv);
+    else tcp_recv(state->tcp_pcb, tcp_client_recv_stream);
     tcp_err(state->tcp_pcb, tcp_client_err);
 
     state->buffer_len = 0;
@@ -161,6 +182,43 @@ int cmd_tcpclient(void){
             if(argc==5)timeout=getint(argv[4],1,100000);
             TCP_CLIENT=state;
             state->TCP_PORT=port;
+            state->buffer_write=NULL;
+            if(!isalpha((uint8_t)*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
+                    if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
+                    state->remote_addr=remote_addr;
+            } else {
+                    int err = dns_gethostbyname(IP, &remote_addr, tcp_dns_found, state);
+                    if(err==ERR_OK)state->remote_addr=remote_addr;
+                    else if(err==ERR_INPROGRESS){
+                        Timer4=timeout;
+                        while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                        if(!Timer4)error("Failed to convert web address");
+                        state->complete=0;
+                    } else error("Failed to find TCP address");
+            }
+            if (!tcp_client_open(state)) {
+                    error("Failed to open client");
+            }
+
+            Timer4=timeout;
+            while(!state->connected && Timer4){{if(startupcomplete)cyw43_arch_poll();}}
+            if(!Timer4)error("No response from client");
+            return 1;
+    }
+    tp=checkstring(cmdline, (unsigned char *)"OPEN TCP STREAM");
+    if(tp){
+            int timeout=5000;
+            getargs(&tp,5,(unsigned char *)",");
+            if(argc<3)error("Syntax");
+            ip4_addr_t remote_addr;
+            char *IP=GetTempMemory(STRINGSIZE);
+            TCP_CLIENT_T *state = tcp_client_init();
+            IP=(char *)getCstring(argv[0]);
+            int port=getint(argv[2],1,65535);
+            if(argc==5)timeout=getint(argv[4],1,100000);
+            TCP_CLIENT=state;
+            state->TCP_PORT=port;
+            state->buffer_write=&streampointer;
             if(!isalpha((uint8_t)*IP) && strchr(IP,'.') && strchr(IP,'.')<IP+4){
                     if(!ip4addr_aton(IP, &remote_addr))error("Invalid address format");
                     state->remote_addr=remote_addr;
@@ -202,7 +260,7 @@ int cmd_tcpclient(void){
                     if(vartbl[VarIndex].dims[0] <= 0) {      // Not an array
                             error("Argument 2 must be integer array");
                     }
-                    size=(vartbl[VarIndex].dims[0] - OptionBase)*8;
+                    size=(vartbl[VarIndex].dims[0] - OptionBase + 1 ) * 8;
                     dest = (long long int *)ptr1;
                     dest[0]=0;
                     q=(uint8_t *)&dest[1];
@@ -216,6 +274,46 @@ int cmd_tcpclient(void){
             Timer4=timeout;
             while(!state->buffer_len && Timer4)ProcessWeb();
             if(!Timer4)error("No response from server");
+            return 1;
+    }
+    tp=checkstring(cmdline, (unsigned char *)"TCP CLIENT STREAM");
+    if(tp){
+            void *ptr1 = NULL;
+            int64_t *dest=NULL;
+            uint8_t *q=NULL;
+            int size=0;
+            TCP_CLIENT_T *state = TCP_CLIENT;
+            getargs(&tp,7,(unsigned char *)",");
+            if(!state)error("No connection");
+            if(!state->connected)error("No connection");
+            if(argc!=7)error("Syntax");
+            char *request=(char *)getstring(argv[0]);
+            ptr1 = findvar(argv[2], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+            if(vartbl[VarIndex].type & T_INT) {
+                    if(vartbl[VarIndex].dims[1] != 0) error("Invalid variable");
+                    if(vartbl[VarIndex].dims[0] <= 0) {      // Not an array
+                            error("Argument 2 must be integer array");
+                    }
+                    size=(vartbl[VarIndex].dims[0] - OptionBase + 1 ) * 8;
+                    dest = (long long int *)ptr1;
+                    dest[0]=0;
+                    q=(uint8_t *)&dest[1];
+            } else error("Argument 2 must be integer array");
+            ptr1 = findvar(argv[4], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+            if(vartbl[VarIndex].type & T_INT) {
+                    if(vartbl[VarIndex].dims[0] != 0) error("Argument 3 must be an integer");
+                    state->buffer_read = (int *)ptr1;
+            } else error("Argument 3 must be an integer");
+            ptr1 = findvar(argv[6], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+            if(vartbl[VarIndex].type & T_INT) {
+                    if(vartbl[VarIndex].dims[0] != 0) error("Argument 4 must be an integer");
+                    state->buffer_write = (int *)ptr1;
+            } else error("Argument 4 must be an integer");
+            state->BUF_SIZE=size;
+            state->buffer=q;
+            state->buffer_len=0;
+            err_t err = tcp_write(state->tcp_pcb, &request[1], (uint32_t)request[0], 0);
+            if(err)error("write failed %",err);
             return 1;
     }
     tp=checkstring(cmdline, (unsigned char *)"CLOSE TCP CLIENT");

@@ -51,6 +51,7 @@ add_executable(PicoMiteWeb
     tftp.c
     MMtftp.c
     MMudp.c
+    VS1053.c
 )
 set_source_files_properties(mmc_stm32.c PROPERTIES COMPILE_FLAGS -O3)
 set_source_files_properties(ff.c PROPERTIES COMPILE_FLAGS -Os)
