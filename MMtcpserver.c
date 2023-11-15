@@ -511,9 +511,10 @@ void cmd_transmit(unsigned char *cmd){
         char vartest[MAXVARLEN];
         int vartestp;
         int FileSize;
+        int buffersize=4096;
         char p[10]={0};
-    	getargs(&tp, 3, (unsigned char *)",");
-        if(argc!=3)error("Argument count");
+    	getargs(&tp, 5, (unsigned char *)",");
+        if(argc<3)error("Argument count");
         char *outstr=GetTempMemory(STRINGSIZE);
         char *valbuf=GetTempMemory(STRINGSIZE);
         strcat(outstr,httpheaders);
@@ -522,12 +523,13 @@ void cmd_transmit(unsigned char *cmd){
         int pcb = getint(argv[0],1,MaxPcb)-1;
         fname=(char *)getCstring(argv[2]);
         if(*fname == 0) error("Cannot find file");
+        if(argc==5)buffersize=getint(argv[4],0,HEAP_MEMORY_SIZE);
         if (ExistsFile(fname)) {
                 fn = FindFreeFileNbr();
                 if (!BasicFileOpen(fname, fn, FA_READ)) return;
                 if(filesource[fn]!=FLASHFILE) FileSize = f_size(FileTable[fn].fptr);
                 else FileSize = lfs_file_size(&lfs,FileTable[fn].lfsptr);
-                char *SocketOut=GetMemory(FileSize+4096);
+                char *SocketOut=GetMemory(FileSize+buffersize);
                 int SocketOutPointer=0;
                 while(1) {
                         if(FileEOF(fn)) break;
