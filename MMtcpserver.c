@@ -25,7 +25,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 
 #include "MMBasic_Includes.h"
 #include "Hardware_Includes.h"
-int optionsuppressstatus=0;
+bool optionsuppressstatus=0;
 int TCP_PORT ;
 //#define DEBUG_printf printf
 #define DEBUG_printf
@@ -697,22 +697,14 @@ int cmd_tcpserver(void){
         tp=checkstring(cmdline, (unsigned char *)"TCP SEND");
         if(tp){
                 TCP_SERVER_T *state = (TCP_SERVER_T*)TCPstate;
-                 void *ptr1 = NULL;
                 int64_t *dest=NULL;
                 uint8_t *q=NULL;
                 getargs(&tp, 3, (unsigned char *)",");
                 if(!TCPstate)error("Server not open");
                 if(argc != 3)error("Argument count");
                 int pcb = getint(argv[0],1,MaxPcb)-1;
-                ptr1 = findvar(argv[2], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
-                if(vartbl[VarIndex].type & T_INT) {
-                if(vartbl[VarIndex].dims[1] != 0) error("Invalid variable");
-                if(vartbl[VarIndex].dims[0] <= 0) {      // Not an array
-                        error("Argument 1 must be integer array");
-                }
-                dest = (long long int *)ptr1;
+                parseintegerarray(argv[2],&dest,2,1,NULL,false);
                 q=(uint8_t *)&dest[1];
-                } else error("Argument must be integer array");
 //                int j=(vartbl[VarIndex].dims[0] - OptionBase);
                 state->buffer_sent[pcb]=q;
                 int bufflen=dest[0];

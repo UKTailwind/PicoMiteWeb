@@ -117,10 +117,15 @@ err_t tcp_client_recv_stream(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, er
     // cyw43_arch_lwip_begin IS needed
     cyw43_arch_lwip_check();
     if (p->tot_len > 0) {
+        cyw43_arch_lwip_begin();
         for(int j=0;j<p->tot_len;j++){
             state->buffer[*state->buffer_write]= ((char *)p->payload)[j];
             *state->buffer_write = (*state->buffer_write + 1) % state->BUF_SIZE;     // advance the head of the queue
+            if(*state->buffer_write == *state->buffer_read) {                           // if the buffer has overflowed
+                *state->buffer_read = (*state->buffer_read + 1) % state->BUF_SIZE;  // throw away the oldest char
+            }
         }
+        cyw43_arch_lwip_end();
         tcp_recved(tpcb, p->tot_len);
     }
     pbuf_free(p);
@@ -167,6 +172,14 @@ static bool tcp_client_open(void *arg) {
 
     return err == ERR_OK;
 }
+void close_tcpclient(void){
+    TCP_CLIENT_T *state = TCP_CLIENT;
+    if(!state)return;
+    tcp_client_close(state) ;
+    free(state);
+    TCP_CLIENT=NULL;
+}
+
 int cmd_tcpclient(void){
     unsigned char *tp;
     tp=checkstring(cmdline, (unsigned char *)"OPEN TCP CLIENT");
@@ -244,7 +257,6 @@ int cmd_tcpclient(void){
 
     tp=checkstring(cmdline, (unsigned char *)"TCP CLIENT REQUEST");
     if(tp){
-            void *ptr1 = NULL;
             int64_t *dest=NULL;
             uint8_t *q=NULL;
             int size=0, timeout=5000;
@@ -254,17 +266,9 @@ int cmd_tcpclient(void){
             if(!state->connected)error("No connection");
             if(argc<3)error("Syntax");
             char *request=(char *)getstring(argv[0]);
-            ptr1 = findvar(argv[2], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
-            if(vartbl[VarIndex].type & T_INT) {
-                    if(vartbl[VarIndex].dims[1] != 0) error("Invalid variable");
-                    if(vartbl[VarIndex].dims[0] <= 0) {      // Not an array
-                            error("Argument 2 must be integer array");
-                    }
-                    size=(vartbl[VarIndex].dims[0] - OptionBase + 1 ) * 8;
-                    dest = (long long int *)ptr1;
-                    dest[0]=0;
-                    q=(uint8_t *)&dest[1];
-            } else error("Argument 2 must be integer array");
+            size=parseintegerarray(argv[2],&dest,2,1,NULL,true)*8;
+            dest[0]=0;
+            q=(uint8_t *)&dest[1];
             if(argc==5)timeout=getint(argv[4],1,100000);
             state->BUF_SIZE=size;
             state->buffer=q;
@@ -288,23 +292,15 @@ int cmd_tcpclient(void){
             if(!state->connected)error("No connection");
             if(argc!=7)error("Syntax");
             char *request=(char *)getstring(argv[0]);
-            ptr1 = findvar(argv[2], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
-            if(vartbl[VarIndex].type & T_INT) {
-                    if(vartbl[VarIndex].dims[1] != 0) error("Invalid variable");
-                    if(vartbl[VarIndex].dims[0] <= 0) {      // Not an array
-                            error("Argument 2 must be integer array");
-                    }
-                    size=(vartbl[VarIndex].dims[0] - OptionBase + 1 ) * 8;
-                    dest = (long long int *)ptr1;
-                    dest[0]=0;
-                    q=(uint8_t *)&dest[1];
-            } else error("Argument 2 must be integer array");
-            ptr1 = findvar(argv[4], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+            size=parseintegerarray(argv[2],&dest,2,1,NULL,true)*8;
+            dest[0]=0;
+            q=(uint8_t *)&dest[1];
+            ptr1 = findvar(argv[4], V_FIND | V_NOFIND_ERR);
             if(vartbl[VarIndex].type & T_INT) {
                     if(vartbl[VarIndex].dims[0] != 0) error("Argument 3 must be an integer");
                     state->buffer_read = (int *)ptr1;
             } else error("Argument 3 must be an integer");
-            ptr1 = findvar(argv[6], V_FIND | V_EMPTY_OK | V_NOFIND_ERR);
+            ptr1 = findvar(argv[6], V_FIND | V_NOFIND_ERR);
             if(vartbl[VarIndex].type & T_INT) {
                     if(vartbl[VarIndex].dims[0] != 0) error("Argument 4 must be an integer");
                     state->buffer_write = (int *)ptr1;
@@ -320,9 +316,7 @@ int cmd_tcpclient(void){
     if(tp){
             TCP_CLIENT_T *state = TCP_CLIENT;
             if(!state)error("No connection");
-            tcp_client_close(state) ;
-            free(state);
-            TCP_CLIENT=NULL;
+            close_tcpclient();
             return 1;
     }
     return 0;
