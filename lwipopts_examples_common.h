@@ -19,18 +19,18 @@
   MEM_LIBC_MALLOC is incompatible with non polling versions
 #define MEM_LIBC_MALLOC             0
 #endif
-#define MEMP_NUM_RAW_PCB            8
-#define LWIP_MAX_SOCKETS            8
+//#define MEMP_NUM_RAW_PCB            8
+//#define LWIP_MAX_SOCKETS            8
 #define MEMP_NUM_TCP_PCB            8
 #define MEM_ALIGNMENT               4
 //#define MEM_SIZE                    8000
 #define MEMP_NUM_TCP_SEG            32
 //#define MEMP_NUM_ARP_QUEUE          10
-#define PBUF_POOL_SIZE              24
+#define PBUF_POOL_SIZE              32
 #define LWIP_ARP                    1
-#define LWIP_ETHERNET               1
-#define LWIP_ICMP                   1
-#define LWIP_RAW                    1
+//#define LWIP_ETHERNET               1
+#define LWIP_ICMP                   0
+#define LWIP_RAW                    0
 #define TCP_WND                     (8 * TCP_MSS)
 #define TCP_MSS                     1460
 #define TCP_SND_BUF                 (8 * TCP_MSS)
@@ -85,7 +85,7 @@
 #define TCP_QLEN_DEBUG              LWIP_DBG_OFF
 #define TCP_RST_DEBUG               LWIP_DBG_OFF
 #define UDP_DEBUG                   LWIP_DBG_OFF
-#define TCPIP_DEBUG                 LWIP_DBG_OFF
+#define TCPIP_DEBUG                 LWIP_DBG_ON
 #define PPP_DEBUG                   LWIP_DBG_OFF
 #define SLIP_DEBUG                  LWIP_DBG_OFF
 #define DHCP_DEBUG                  LWIP_DBG_OFF

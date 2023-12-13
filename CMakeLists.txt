@@ -76,14 +76,14 @@ Pico_enable_stdio_usb(PicoMiteWeb 1)
 pico_enable_stdio_uart(PicoMiteWeb 0)
 pico_add_extra_outputs(PicoMiteWeb)
 target_compile_options(PicoMiteWeb PRIVATE  -DPICOMITEWEB 
-											-DNDEBUG 
+                                            -DNDEBUG
 	                                        -DPICO_XOSC_STARTUP_DELAY_MULTIPLIER=64 
 											-DPICO_FLASH_SIZE_BYTES=16777216 
 											-DPICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=0 
 											-DPICO_STACK_SIZE=0x2000 
 											-DPICO_CORE1_STACK_SIZE=0x0 
-											-DPICO_HEAP_SIZE=0x3C00 
-											-DPICO_CYW43_ARCH_POLL 
+											-DPICO_HEAP_SIZE=0x2000 
+											-DPICO_CYW43_ARCH_POLL
 											-DCYW43_HOST_NAME="WebMite" 
                                             -Wall
 											-O2)

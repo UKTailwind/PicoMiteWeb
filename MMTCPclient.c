@@ -204,7 +204,7 @@ int cmd_tcpclient(void){
                     if(err==ERR_OK)state->remote_addr=remote_addr;
                     else if(err==ERR_INPROGRESS){
                         Timer4=timeout;
-                        while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                        while(!state->complete && Timer4 && !(err==ERR_OK))if(startupcomplete)cyw43_arch_poll();
                         if(!Timer4)error("Failed to convert web address");
                         state->complete=0;
                     } else error("Failed to find TCP address");
@@ -214,7 +214,7 @@ int cmd_tcpclient(void){
             }
 
             Timer4=timeout;
-            while(!state->connected && Timer4){{if(startupcomplete)cyw43_arch_poll();}}
+            while(!state->connected && Timer4)if(startupcomplete)cyw43_arch_poll();
             if(!Timer4)error("No response from client");
             return 1;
     }
@@ -240,7 +240,7 @@ int cmd_tcpclient(void){
                     if(err==ERR_OK)state->remote_addr=remote_addr;
                     else if(err==ERR_INPROGRESS){
                         Timer4=timeout;
-                        while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                        while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb(0);
                         if(!Timer4)error("Failed to convert web address");
                         state->complete=0;
                     } else error("Failed to find TCP address");
@@ -250,7 +250,7 @@ int cmd_tcpclient(void){
             }
 
             Timer4=timeout;
-            while(!state->connected && Timer4){{if(startupcomplete)cyw43_arch_poll();}}
+            while(!state->connected && Timer4){{if(startupcomplete)ProcessWeb(0);}}
             if(!Timer4)error("No response from client");
             return 1;
     }
@@ -276,7 +276,7 @@ int cmd_tcpclient(void){
             err_t err = tcp_write(state->tcp_pcb, &request[1], (uint32_t)request[0], 0);
             if(err)error("write failed %",err);
             Timer4=timeout;
-            while(!state->buffer_len && Timer4)ProcessWeb();
+            while(!state->buffer_len && Timer4)ProcessWeb(0);
             if(!Timer4)error("No response from server");
             return 1;
     }

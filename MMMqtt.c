@@ -165,8 +165,7 @@ mqtt_example_init(ip_addr_t *mqtt_ip, int port)
           mqtt_connection_cb, &mqtt_client_info,
           &mqtt_client_info);
   Timer4=5000;
-  while(Timer4 && mqtt_client->conn_state != MQTT_CONNECTED){ProcessWeb();
-  }
+  while(Timer4 && mqtt_client->conn_state != MQTT_CONNECTED)if(startupcomplete)cyw43_arch_poll();
   if(Timer4==0)error("Failed to connect");
   mqtt_set_inpub_callback(mqtt_client,
           mqtt_incoming_publish_cb,
@@ -183,7 +182,7 @@ void closeMQTT(void){
     }
 
 }
-static struct altcp_tls_config *tls_config = NULL;
+//static struct altcp_tls_config *tls_config = NULL;
 
 int cmd_mqtt(void){
     unsigned char *tp=checkstring(cmdline,(unsigned char *)"MQTT CONNECT");
@@ -197,10 +196,10 @@ int cmd_mqtt(void){
         IP=(char *)getCstring(argv[0]);
         int port=getint(argv[2],1,65535);
         ip4_addr_t remote_addr;
-        if(port==8883){
-          tls_config = altcp_tls_create_config_client(NULL, 0);
-          mqtt_client_info.tls_config=tls_config;
-        }
+//        if(port==8883){
+//          tls_config = altcp_tls_create_config_client(NULL, 0);
+//          mqtt_client_info.tls_config=tls_config;
+//        }
         mqtt_client_info.client_user=(char *)getCstring(argv[4]);
         mqtt_client_info.client_pass=(char *)getCstring(argv[6]);
         if(argc==9){
@@ -220,7 +219,7 @@ int cmd_mqtt(void){
         } else {
                 int err = dns_gethostbyname(IP, &remote_addr, mqtt_dns_found, &mqtt_dns);
                 Timer4=timeout;
-                while(!mqtt_dns.complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                while(!mqtt_dns.complete && Timer4 && !(err==ERR_OK))if(startupcomplete)cyw43_arch_poll();
                 if(!Timer4)error("Failed to convert web address");
                 mqtt_dns.complete=0;
         }
@@ -250,7 +249,7 @@ int cmd_mqtt(void){
       mqtt_subs.complete=0;
       Timer4=4000;
       mqtt_sub_unsub(mqtt_client, mqtt_subs.topic, qos, mqtt_submessage_cb, &mqtt_subs, 1);
-      while(Timer4 && !mqtt_subs.complete)ProcessWeb();
+      while(Timer4 && !mqtt_subs.complete)if(startupcomplete)cyw43_arch_poll();
       if(Timer4==0)error("Failed to subscribe to $",mqtt_subs.topic);
       return 1;
     }
@@ -260,7 +259,7 @@ int cmd_mqtt(void){
       mqtt_subs.complete=0;
       Timer4=4000;
       mqtt_sub_unsub(mqtt_client, mqtt_subs.topic, 0, mqtt_unsubmessage_cb, &mqtt_subs, 0);
-      while(Timer4 && !mqtt_subs.complete)ProcessWeb();
+      while(Timer4 && !mqtt_subs.complete)if(startupcomplete)cyw43_arch_poll();
       if(Timer4==0)error("Failed to unsubscribe to $",mqtt_subs.topic);
       return 1;
     }

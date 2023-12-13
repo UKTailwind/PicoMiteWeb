@@ -31,7 +31,6 @@ NTP_T *NTPstate=NULL;
 #define NTP_DELTA 2208988800 // seconds between 1 Jan 1900 and 1 Jan 1970
 #define NTP_TEST_TIME (30 * 1000)
 #define NTP_RESEND_TIME (10 * 1000)
-extern volatile int processtick;
 volatile time_t timeadjust=0;
 volatile uint8_t seconds_buf[4] = {0};
 // Called with results of operation
@@ -43,7 +42,7 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         sprintf(buff,"got ntp response: %02d/%02d/%04d %02d:%02d:%02d\r\n", utc->tm_mday, utc->tm_mon + 1, utc->tm_year + 1900,
                utc->tm_hour, utc->tm_min, utc->tm_sec);
         if(!optionsuppressstatus)MMPrintString(buff);
-        processtick=0;
+        mT4IntEnable(0);
         hour = utc->tm_hour;
         minute = utc->tm_min;
         second = utc->tm_sec;
@@ -52,7 +51,7 @@ static void ntp_result(NTP_T* state, int status, time_t *result) {
         year = utc->tm_year + 1900;
         month = utc->tm_mon + 1;
         day = utc->tm_mday;
-        processtick=1;
+        mT4IntEnable(1);
     }
 }
 
@@ -146,7 +145,7 @@ void cmd_ntp(unsigned char *tp){
                     if(err==ERR_OK)state->ntp_server_address=remote_addr;
                     else if(err==ERR_INPROGRESS){
                         Timer4=timeout;
-                        while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                        while(!state->complete && Timer4 && !(err==ERR_OK))if(startupcomplete)cyw43_arch_poll();
                         if(!Timer4)error("Failed to convert web address");
                         state->complete=0;
                     } else error("Failed to find NTP address");
@@ -163,7 +162,7 @@ void cmd_ntp(unsigned char *tp){
             ntp_request(state);
             Timer4=timeout;
             while(!state->complete){
-                ProcessWeb();
+                if(startupcomplete)cyw43_arch_poll();
                 if(!Timer4){
                         udp_remove(NTPstate->ntp_pcb);
 //                        memset(NTPstate,0,sizeof(NTPstate));

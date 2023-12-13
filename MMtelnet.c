@@ -24,6 +24,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ************************************************************************************************************************/
 #include "MMBasic_Includes.h"
 #include "Hardware_Includes.h"
+//#define DEBUG_printf printf
 #define DEBUG_printf
 static char Telnetbuff[256]={0};
 static int Telnetpos=0;
@@ -149,7 +150,7 @@ void tcp_telnet_err(void *arg, err_t err) {
 
 void starttelnet(struct tcp_pcb *client_pcb, int pcb, void *arg){
         TCP_SERVER_T *state = (TCP_SERVER_T*)arg;
-//        DEBUG_printf("Telnet Client connected %x on pcb %d\r\n",(uint32_t)client_pcb,pcb);        tcp_arg(client_pcb, state);
+        DEBUG_printf("Telnet Client connected %x on pcb %d\r\n",(uint32_t)client_pcb,pcb);        tcp_arg(client_pcb, state);
         tcp_sent(client_pcb, tcp_telnet_sent);
         tcp_recv(client_pcb, tcp_telnet_recv);
         tcp_err(client_pcb, tcp_telnet_err);

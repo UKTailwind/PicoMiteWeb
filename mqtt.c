@@ -55,9 +55,8 @@
 #include "lwip/pbuf.h"
 #include "lwip/altcp.h"
 #include "lwip/altcp_tcp.h"
-#include "lwip/altcp_tls.h"
+//#include "lwip/altcp_tls.h"
 #include <string.h>
-extern void uSec(int);
 #if LWIP_TCP && LWIP_CALLBACK_API
 
 /**
@@ -768,7 +767,6 @@ u16_t payload_length;
     if (payload_length > 0 || remaining_length == 0) {
       if (length < (size_t)(payload_offset + payload_length)) {
         //LWIP_DEBUGF(MQTT_DEBUG_WARN,( "mqtt_message_received: Received short packet (payload)\n"));
-      uSec(1000000);
         goto out_disconnect;
       }
       if (client->data_cb != NULL) {

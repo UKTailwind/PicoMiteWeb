@@ -103,7 +103,7 @@ void cmd_udp(unsigned char *p){
             if(err==ERR_OK)state->udp_server_address=remote_addr;
             else if(err==ERR_INPROGRESS){
                 Timer4=timeout;
-                while(!state->complete && Timer4 && !(err==ERR_OK))ProcessWeb();
+                while(!state->complete && Timer4 && !(err==ERR_OK))if(startupcomplete)cyw43_arch_poll();
                 if(!Timer4)error("Failed to convert web address");
             } else error("Failed to find UDP address");
         }
@@ -120,7 +120,7 @@ void cmd_udp(unsigned char *p){
         if (er != ERR_OK) {
             printf("Failed to send UDP packet! error=%d", er);
         } 
-        cyw43_arch_poll();
+//        ProcessWeb(0);
         udp_remove(sendudppcb);
         sendudppcb=NULL;
         return;
