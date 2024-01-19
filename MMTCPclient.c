@@ -278,6 +278,8 @@ int cmd_tcpclient(void){
             Timer4=timeout;
             while(!state->buffer_len && Timer4)ProcessWeb(0);
             if(!Timer4)error("No response from server");
+            else Timer4=200;
+            while(Timer4)ProcessWeb(0);
             return 1;
     }
     tp=checkstring(cmdline, (unsigned char *)"TCP CLIENT STREAM");
