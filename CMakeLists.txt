@@ -53,10 +53,13 @@ add_executable(PicoMiteWeb
     MMudp.c
     VS1053.c
 )
-set_source_files_properties(mmc_stm32.c PROPERTIES COMPILE_FLAGS -O3)
+set_source_files_properties(mmc_stm32.c PROPERTIES COMPILE_FLAGS -O2)
 set_source_files_properties(ff.c PROPERTIES COMPILE_FLAGS -Os)
 set_source_files_properties(GUI.c PROPERTIES COMPILE_FLAGS -Os)
 set_source_files_properties(BmpDecoder.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(GPS.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(I2C.c PROPERTIES COMPILE_FLAGS -Os)
+set_source_files_properties(lfs.c PROPERTIES COMPILE_FLAGS -Os)
 set_source_files_properties(picojpeg.c PROPERTIES COMPILE_FLAGS -Os)
 set_source_files_properties(regex.c PROPERTIES COMPILE_FLAGS -Os)
 set_source_files_properties(hxcmod.c PROPERTIES COMPILE_FLAGS -Os)
@@ -78,9 +81,8 @@ pico_add_extra_outputs(PicoMiteWeb)
 target_compile_options(PicoMiteWeb PRIVATE  -DPICOMITEWEB 
                                             -DNDEBUG
 	                                        -DPICO_XOSC_STARTUP_DELAY_MULTIPLIER=64 
-											-DPICO_FLASH_SIZE_BYTES=16777216 
 											-DPICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=0 
-											-DPICO_STACK_SIZE=0x2000 
+											-DPICO_STACK_SIZE=0x1000 
 											-DPICO_CORE1_STACK_SIZE=0x0 
 											-DPICO_HEAP_SIZE=0x2000 
 											-DPICO_CYW43_ARCH_POLL
